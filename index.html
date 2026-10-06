@@ -1637,12 +1637,19 @@ function applyStockData(
     !stock.isIndex &&
     state.priceType ===
       "限價" &&
-    !$("#price").value &&
     Number(
       stock.lastPrice
     ) > 0
   ){
 
+    /*
+      每次重新查詢 / 切換股票成功時，
+      都將目前查到的價格同步到委託價格。
+
+      注意：
+      每 10 秒自動更新行情時 firstLoad=false，
+      因此不會一直改動使用者已設定的委託價格。
+    */
     $("#price").value =
       stock.lastPrice;
 
