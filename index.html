@@ -1579,14 +1579,10 @@ function applyStockData(
     指數：顯示「目前指數」
     股票 / ETF：顯示「即時成交價」
   */
-  $("#lastPriceLabel").textContent =
-    stock.isIndex
-      ? "目前指數"
-      : (
-          stock.isClose
-            ? "收盤價"
-            : "即時成交價"
-        );
+$("#lastPriceLabel").textContent =
+  stock.isIndex
+    ? "目前指數"
+    : "目前報價";
 
 
   setQuoteValue(
