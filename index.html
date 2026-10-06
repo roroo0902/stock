@@ -10,18 +10,20 @@
     :root{
       --primary:#13a6b8;
       --primary-dark:#0a8f9f;
-      --bg:#f4f6f7;
+      --bg:#edf1f2;
       --card:#ffffff;
       --text:#4c5053;
       --muted:#969da1;
       --line:#e6eaec;
       --danger:#d9534f;
       --success:#159a7d;
+      --up:#d94040;
+      --down:#16885e;
     }
     *{box-sizing:border-box}
     body{
       margin:0;
-      background:#edf1f2;
+      background:var(--bg);
       color:var(--text);
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",
         "PingFang TC","Microsoft JhengHei",sans-serif;
@@ -34,6 +36,7 @@
       padding-bottom:115px;
     }
     button{font-family:inherit}
+
     .top-tabs,.trade-tabs,.segmented,.three-tabs{
       display:grid;
       gap:1px;
@@ -45,9 +48,10 @@
       background:#087c84;
     }
     .trade-tabs{
-      grid-template-columns:1fr 1fr;
+      grid-template-columns:repeat(4,1fr);
       background:#07898f;
     }
+
     .top-tabs button,.trade-tabs button,.segmented button,.three-tabs button{
       border:0;
       padding:16px 8px;
@@ -58,26 +62,31 @@
     }
     .top-tabs button:first-child{border-radius:10px 0 0 10px}
     .top-tabs button:last-child{border-radius:0 10px 10px 0}
+
     .top-tabs .active,.trade-tabs .active,.segmented .active,.three-tabs .active{
       background:var(--primary);
       color:#fff;
       font-weight:700;
     }
+
     .trade-tabs button{
       background:#07898f;
-      color:#86ccd1;
-      font-size:23px;
+      color:#88d2d7;
+      font-size:18px;
+      padding:18px 5px;
     }
     .trade-tabs button.active{
       background:#07898f;
       color:#fff;
     }
+
     .search-wrap,.section{
       margin:14px;
       padding:14px;
       border-radius:12px;
       background:#f7f8f8;
     }
+
     .search{
       display:flex;
       align-items:center;
@@ -104,10 +113,17 @@
       white-space:nowrap;
       cursor:pointer;
     }
+
+    .lookup-status{
+      margin-top:8px;
+      font-size:14px;
+      color:#777;
+    }
+
     .stock-card{
       display:none;
       margin-top:10px;
-      padding:13px;
+      padding:14px;
       border-radius:10px;
       background:#fff;
       border:1px solid var(--line);
@@ -127,8 +143,9 @@
       align-items:center;
       gap:9px;
       flex-wrap:wrap;
+      margin-bottom:10px;
     }
-    .stock-title strong{font-size:20px}
+    .stock-title strong{font-size:21px}
     .badge{
       display:inline-block;
       border-radius:999px;
@@ -138,17 +155,39 @@
       font-size:13px;
       font-weight:800;
     }
+
+    .quote-grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+    }
+    .quote-item{
+      border-radius:9px;
+      background:#fff;
+      border:1px solid #e8eeee;
+      padding:9px;
+    }
+    .quote-label{
+      font-size:12px;
+      color:#8b9296;
+      margin-bottom:3px;
+    }
+    .quote-value{
+      font-size:18px;
+      font-weight:800;
+      color:#333;
+    }
+    .up{color:var(--up)!important}
+    .down{color:var(--down)!important}
+    .flat{color:#666!important}
+
     .stock-info{
-      margin-top:7px;
-      font-size:14px;
+      margin-top:10px;
+      font-size:13px;
       color:#70777b;
       line-height:1.8;
     }
-    .lookup-status{
-      margin-top:8px;
-      font-size:14px;
-      color:#777;
-    }
+
     .segmented{
       grid-template-columns:1fr 1fr;
       margin-bottom:10px;
@@ -166,11 +205,13 @@
       color:#999!important;
       cursor:not-allowed;
     }
+
     .label{
       font-size:16px;
       color:#7c8286;
       margin:12px 0 8px;
     }
+
     .stepper{
       display:grid;
       grid-template-columns:54px 1fr 54px;
@@ -194,6 +235,7 @@
       width:100%;
       padding:12px;
     }
+
     .grid2{
       display:grid;
       grid-template-columns:1fr 1fr;
@@ -211,6 +253,7 @@
       float:right;
       color:#222;
     }
+
     .submit-bar{
       position:fixed;
       left:50%;
@@ -243,10 +286,12 @@
     }
     .msg.ok{color:var(--success)}
     .msg.err{color:var(--danger)}
-    @media(max-width:480px){
-      .top-tabs button,.trade-tabs button{font-size:18px}
+
+    @media(max-width:600px){
+      .trade-tabs button{font-size:15px}
       .section,.search-wrap{margin:10px}
       .grid2{grid-template-columns:1fr}
+      .quote-grid{grid-template-columns:repeat(2,1fr)}
     }
   </style>
 </head>
@@ -262,6 +307,8 @@
   <div class="trade-tabs">
     <button class="active" data-side="買進">買進</button>
     <button data-side="賣出">賣出</button>
+    <button data-side="取消買進">取消買進</button>
+    <button data-side="取消賣出">取消賣出</button>
   </div>
 
   <section class="search-wrap">
@@ -269,28 +316,55 @@
       <span style="font-size:28px">⌕</span>
       <input
         id="stockInput"
-        inputmode="numeric"
         maxlength="8"
-        placeholder="輸入台股代碼，例如 2330"
+        placeholder="輸入台股代碼，例如 2330、0050、00981A"
         autocomplete="off"
       >
       <button class="lookup-btn" id="lookupBtn" type="button">查詢</button>
     </div>
 
     <div class="lookup-status" id="lookupStatus">
-      輸入代碼後會向台灣股市資料查詢，確認股票名稱及上市／上櫃市場。
+      查詢後每 10 秒更新一次即時報價；離開頁面時會暫停更新。
     </div>
 
     <div class="stock-card" id="stockCard">
       <div class="stock-title">
         <strong id="stockName">—</strong>
         <span class="badge" id="stockMarket">—</span>
+        <span class="badge" id="stockType">—</span>
       </div>
+
+      <div class="quote-grid">
+        <div class="quote-item">
+          <div class="quote-label">即時成交價</div>
+          <div class="quote-value" id="lastPrice">—</div>
+        </div>
+        <div class="quote-item">
+          <div class="quote-label">昨收</div>
+          <div class="quote-value" id="previousClose">—</div>
+        </div>
+        <div class="quote-item">
+          <div class="quote-label">漲跌</div>
+          <div class="quote-value" id="changePrice">—</div>
+        </div>
+        <div class="quote-item">
+          <div class="quote-label">漲跌幅</div>
+          <div class="quote-value" id="changePercent">—</div>
+        </div>
+        <div class="quote-item">
+          <div class="quote-label">最高</div>
+          <div class="quote-value" id="highPrice">—</div>
+        </div>
+        <div class="quote-item">
+          <div class="quote-label">最低</div>
+          <div class="quote-value" id="lowPrice">—</div>
+        </div>
+      </div>
+
       <div class="stock-info">
         股票代碼：<span id="stockCode">—</span><br>
-        公司全名：<span id="stockFullName">—</span><br>
-        最近成交價：<span id="lastPrice">—</span><br>
-        昨收：<span id="yesterdayPrice">—</span>
+        市場：<span id="marketDetail">—</span><br>
+        更新時間：<span id="quoteUpdated">—</span>
       </div>
     </div>
   </section>
@@ -342,7 +416,7 @@
       <div class="summary">
         股票 <b id="sStock">—</b><br>
         市場 <b id="sExchange">—</b><br>
-        買賣別 <b id="sSide">買進</b><br>
+        操作 <b id="sSide">買進</b><br>
         類型 <b id="sMarket">整股</b>
       </div>
 
@@ -366,17 +440,22 @@
 
 <script>
 /* =====================================================
-   ① 改成你的 Make / GAS / n8n Webhook
+   1. 你的下單 / 取消 Webhook
 ===================================================== */
 const WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE";
 
 /* =====================================================
-   ② 改成下面提供的 Google Apps Script Web App 網址
-   這個 GAS 負責查詢台灣證交所 MIS，
-   可辨識上市 tse / 上櫃 otc。
+   2. 你的 GAS 即時報價 Web App
 ===================================================== */
-const STOCK_LOOKUP_URL = "https://script.google.com/macros/s/AKfycbwxsh_GBimKJEQr6kVUracKcLBffOp-JAGxikHtTA-SQJX7zW-Gt8eSfoDIh9JXUhcp7g/exec";
+const STOCK_LOOKUP_URL =
+  "https://script.google.com/macros/s/AKfycbwxsh_GBimKJEQr6kVUracKcLBffOp-JAGxikHtTA-SQJX7zW-Gt8eSfoDIh9JXUhcp7g/exec";
 
+/*
+  免費 Fugle 基本用戶為 60 次/分鐘。
+  10 秒更新 = 每個開啟頁面約 6 次/分鐘。
+  若只有少數人使用，可改成 5000。
+*/
+const QUOTE_REFRESH_MS = 10000;
 
 const state = {
   market: "整股",
@@ -387,46 +466,26 @@ const state = {
   priceType: "限價",
 
   stockValidated: false,
-  stock: null
+  stock: null,
+  quoteTimer: null,
+  quoteBusy: false
 };
-
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-
-
-/* ---------- Tab 共用 ---------- */
 
 function activate(selector, clicked){
   $$(selector).forEach(btn => btn.classList.remove("active"));
   clicked.classList.add("active");
 }
 
-
 $$("[data-market]").forEach(btn => {
   btn.onclick = () => {
     activate("[data-market]", btn);
-
     state.market = btn.dataset.market;
-
-    /*
-      上方若改成零股，
-      下方交易時段同步改成零股。
-    */
-    if(state.market === "零股"){
-      state.session = "零股";
-      $$("[data-session]").forEach(x => x.classList.remove("active"));
-    }else{
-      state.session = "整股";
-      $$("[data-session]").forEach(x => {
-        x.classList.toggle("active", x.dataset.session === "整股");
-      });
-    }
-
     updateSummary();
   };
 });
-
 
 $$("[data-side]").forEach(btn => {
   btn.onclick = () => {
@@ -436,14 +495,12 @@ $$("[data-side]").forEach(btn => {
   };
 });
 
-
 $$("[data-session]").forEach(btn => {
   btn.onclick = () => {
     activate("[data-session]", btn);
     state.session = btn.dataset.session;
   };
 });
-
 
 $$("[data-account]").forEach(btn => {
   btn.onclick = () => {
@@ -453,7 +510,6 @@ $$("[data-account]").forEach(btn => {
   };
 });
 
-
 $$("[data-tif]").forEach(btn => {
   btn.onclick = () => {
     activate("[data-tif]", btn);
@@ -461,24 +517,18 @@ $$("[data-tif]").forEach(btn => {
   };
 });
 
-
 $$("[data-price-type]").forEach(btn => {
   btn.onclick = () => {
     activate("[data-price-type]", btn);
-
     state.priceType = btn.dataset.priceType;
 
     const marketPrice = state.priceType === "市價";
-
     $("#price").disabled = marketPrice;
     $("#priceStepper").style.opacity = marketPrice ? ".45" : "1";
 
     updateSummary();
   };
 });
-
-
-/* ---------- 股票查詢 ---------- */
 
 function normalizeStockCode(value){
   return String(value || "")
@@ -487,42 +537,68 @@ function normalizeStockCode(value){
     .replace(/\s+/g, "");
 }
 
+function stopQuoteTimer(){
+  if(state.quoteTimer){
+    clearInterval(state.quoteTimer);
+    state.quoteTimer = null;
+  }
+}
+
+function startQuoteTimer(){
+  stopQuoteTimer();
+
+  if(!state.stockValidated || !state.stock) return;
+
+  state.quoteTimer = setInterval(() => {
+    if(!document.hidden){
+      refreshQuote(false);
+    }
+  }, QUOTE_REFRESH_MS);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if(!document.hidden && state.stockValidated){
+    refreshQuote(false);
+  }
+});
 
 function clearValidatedStock(){
+  stopQuoteTimer();
+
   state.stockValidated = false;
   state.stock = null;
 
   $("#stockCard").className = "stock-card";
   $("#stockName").textContent = "—";
   $("#stockMarket").textContent = "—";
+  $("#stockType").textContent = "—";
   $("#stockCode").textContent = "—";
-  $("#stockFullName").textContent = "—";
-  $("#lastPrice").textContent = "—";
-  $("#yesterdayPrice").textContent = "—";
+  $("#marketDetail").textContent = "—";
+  $("#quoteUpdated").textContent = "—";
+
+  setQuoteValue("#lastPrice", null);
+  setQuoteValue("#previousClose", null);
+  setQuoteValue("#changePrice", null);
+  setQuoteValue("#changePercent", null);
+  setQuoteValue("#highPrice", null);
+  setQuoteValue("#lowPrice", null);
 
   updateSubmitButton();
   updateSummary();
 }
-
 
 $("#stockInput").addEventListener("input", () => {
   clearValidatedStock();
   $("#lookupStatus").textContent = "代碼已變更，請重新查詢確認。";
 });
 
-
 $("#stockInput").addEventListener("keydown", e => {
-  if(e.key === "Enter"){
-    lookupStock();
-  }
+  if(e.key === "Enter") lookupStock();
 });
-
 
 $("#lookupBtn").addEventListener("click", lookupStock);
 
-
 async function lookupStock(){
-
   const code = normalizeStockCode($("#stockInput").value);
 
   clearValidatedStock();
@@ -532,127 +608,176 @@ async function lookupStock(){
     return;
   }
 
-  /*
-    台股代碼除了一般 4 碼，
-    ETF / 主動ETF 等也可能包含英文字母，
-    因此不只限制純 4 碼。
-  */
   if(!/^[0-9A-Z]{4,8}$/.test(code)){
     showLookupError("股票代碼格式不正確");
     return;
   }
 
-  if(
-    !STOCK_LOOKUP_URL ||
-    STOCK_LOOKUP_URL.includes("YOUR_STOCK_LOOKUP")
-  ){
-    showLookupError("請先在程式設定 STOCK_LOOKUP_URL");
-    return;
-  }
-
   $("#lookupBtn").disabled = true;
   $("#lookupBtn").textContent = "查詢中…";
-  $("#lookupStatus").textContent = "正在確認台灣股市代碼…";
+  $("#lookupStatus").textContent = "正在查詢上市／上櫃／ETF…";
 
   try{
-
-    const url =
-      STOCK_LOOKUP_URL +
-      "?code=" +
-      encodeURIComponent(code) +
-      "&t=" +
-      Date.now();
-
-    const response = await fetch(url, {
-      method: "GET",
-      cache: "no-store"
-    });
-
-    if(!response.ok){
-      throw new Error("HTTP " + response.status);
-    }
-
-    const data = await response.json();
+    const data = await fetchStock(code);
 
     if(!data.ok || !data.stock){
-      showLookupError(
-        data.message || "找不到此上市／上櫃股票代碼"
-      );
+      showLookupError(data.message || "找不到此台股代碼");
       return;
     }
 
+    applyStockData(data.stock, true);
+
     state.stockValidated = true;
-    state.stock = data.stock;
-
-    $("#stockCard").className = "stock-card ok";
-
-    $("#stockName").textContent =
-      data.stock.name || data.stock.code;
-
-    $("#stockMarket").textContent =
-      data.stock.marketName || data.stock.exchange;
-
-    $("#stockCode").textContent =
-      data.stock.code || code;
-
-    $("#stockFullName").textContent =
-      data.stock.fullName || data.stock.name || "—";
-
-    $("#lastPrice").textContent =
-      formatPrice(data.stock.lastPrice);
-
-    $("#yesterdayPrice").textContent =
-      formatPrice(data.stock.previousClose);
-
-    $("#lookupStatus").textContent =
-      "✓ 已確認為有效台灣股市代碼";
-
-    /*
-      限價欄位若目前沒有輸入，
-      可以把目前成交價帶入當作參考。
-    */
-    if(
-      state.priceType === "限價" &&
-      !$("#price").value &&
-      Number(data.stock.lastPrice) > 0
-    ){
-      $("#price").value = data.stock.lastPrice;
-    }
-
     updateSubmitButton();
     updateSummary();
+    startQuoteTimer();
 
   }catch(err){
-
     console.error(err);
-
-    showLookupError(
-      "股票查詢失敗。請確認 GAS Web App 已部署並允許存取。"
-    );
-
+    showLookupError("股票查詢失敗：" + err.message);
   }finally{
-
     $("#lookupBtn").disabled = false;
     $("#lookupBtn").textContent = "查詢";
-
   }
 }
 
+async function refreshQuote(showStatus){
+  if(!state.stockValidated || !state.stock || state.quoteBusy) return;
+
+  state.quoteBusy = true;
+
+  try{
+    if(showStatus){
+      $("#lookupStatus").textContent = "更新即時報價中…";
+    }
+
+    const data = await fetchStock(state.stock.code);
+
+    if(data.ok && data.stock){
+      applyStockData(data.stock, false);
+    }
+  }catch(err){
+    console.error("即時報價更新失敗", err);
+  }finally{
+    state.quoteBusy = false;
+  }
+}
+
+async function fetchStock(code){
+  const url =
+    STOCK_LOOKUP_URL +
+    "?code=" +
+    encodeURIComponent(code) +
+    "&t=" +
+    Date.now();
+
+  const response = await fetch(url, {
+    method: "GET",
+    cache: "no-store"
+  });
+
+  if(!response.ok){
+    throw new Error("HTTP " + response.status);
+  }
+
+  return await response.json();
+}
+
+function applyStockData(stock, firstLoad){
+  state.stock = stock;
+
+  $("#stockCard").className = "stock-card ok";
+  $("#stockName").textContent = stock.name || stock.code;
+  $("#stockMarket").textContent = stock.marketName || stock.market || stock.exchange;
+  $("#stockType").textContent = stock.assetTypeName || stock.type || "台股";
+  $("#stockCode").textContent = stock.code || "—";
+  $("#marketDetail").textContent =
+    `${stock.exchange || "—"} / ${stock.market || "—"}`;
+
+  setQuoteValue("#lastPrice", stock.lastPrice);
+  setQuoteValue("#previousClose", stock.previousClose);
+  setQuoteValue("#highPrice", stock.high);
+  setQuoteValue("#lowPrice", stock.low);
+
+  setChangeValue("#changePrice", stock.change, false);
+  setChangeValue("#changePercent", stock.changePercent, true);
+
+  $("#quoteUpdated").textContent =
+    stock.lastUpdatedText || new Date().toLocaleTimeString("zh-TW");
+
+  $("#lookupStatus").textContent =
+    `✓ 已確認；每 ${QUOTE_REFRESH_MS / 1000} 秒自動更新報價`;
+
+  if(
+    firstLoad &&
+    state.priceType === "限價" &&
+    !$("#price").value &&
+    Number(stock.lastPrice) > 0
+  ){
+    $("#price").value = stock.lastPrice;
+  }
+
+  updateSummary();
+}
+
+function setQuoteValue(selector, value){
+  const el = $(selector);
+  const n = Number(value);
+
+  el.className = "quote-value";
+
+  if(!Number.isFinite(n)){
+    el.textContent = "—";
+    return;
+  }
+
+  el.textContent = n.toLocaleString("zh-TW", {
+    maximumFractionDigits: 4
+  });
+}
+
+function setChangeValue(selector, value, isPercent){
+  const el = $(selector);
+  const n = Number(value);
+
+  el.className = "quote-value";
+
+  if(!Number.isFinite(n)){
+    el.textContent = "—";
+    return;
+  }
+
+  let prefix = "";
+  if(n > 0){
+    el.classList.add("up");
+    prefix = "+";
+  }else if(n < 0){
+    el.classList.add("down");
+  }else{
+    el.classList.add("flat");
+  }
+
+  el.textContent =
+    prefix +
+    n.toLocaleString("zh-TW", {
+      maximumFractionDigits: 2
+    }) +
+    (isPercent ? "%" : "");
+}
 
 function showLookupError(message){
-
   state.stockValidated = false;
   state.stock = null;
 
   $("#stockCard").className = "stock-card error";
   $("#stockName").textContent = "查無資料";
   $("#stockMarket").textContent = "未確認";
+  $("#stockType").textContent = "—";
   $("#stockCode").textContent =
     normalizeStockCode($("#stockInput").value) || "—";
 
-  $("#stockFullName").textContent = "—";
-  $("#lastPrice").textContent = "—";
-  $("#yesterdayPrice").textContent = "—";
+  $("#marketDetail").textContent = "—";
+  $("#quoteUpdated").textContent = "—";
 
   $("#lookupStatus").textContent = message;
 
@@ -660,27 +785,8 @@ function showLookupError(message){
   updateSummary();
 }
 
-
-function formatPrice(value){
-
-  const num = Number(value);
-
-  if(!Number.isFinite(num) || num <= 0){
-    return "—";
-  }
-
-  return num.toLocaleString("zh-TW", {
-    maximumFractionDigits: 4
-  });
-}
-
-
-/* ---------- 數量 / 價格 ---------- */
-
 function stepValue(id, delta){
-
   const el = document.getElementById(id);
-
   let val = Number(el.value || 0) + delta;
 
   if(id === "qty"){
@@ -688,26 +794,17 @@ function stepValue(id, delta){
   }
 
   if(id === "price"){
-    val = Math.max(
-      0,
-      Math.round(val * 100) / 100
-    );
+    val = Math.max(0, Math.round(val * 100) / 100);
   }
 
   el.value = val;
-
   updateSummary();
 }
-
 
 $("#qty").addEventListener("input", updateSummary);
 $("#price").addEventListener("input", updateSummary);
 
-
-/* ---------- 訂單摘要 ---------- */
-
 function updateSummary(){
-
   const qty = Number($("#qty").value || 0);
 
   const price =
@@ -715,10 +812,6 @@ function updateSummary(){
       ? null
       : Number($("#price").value || 0);
 
-  /*
-    整股：輸入 1 代表 1 張 = 1000 股
-    零股：輸入 1 代表 1 股
-  */
   const shares =
     state.market === "整股"
       ? qty * 1000
@@ -743,11 +836,9 @@ function updateSummary(){
   $("#sMarket").textContent = state.market;
 
   $("#sQty").textContent =
-    qty +
-    (state.market === "整股" ? " 張" : " 股");
+    qty + (state.market === "整股" ? " 張" : " 股");
 
-  $("#sPriceType").textContent =
-    state.priceType;
+  $("#sPriceType").textContent = state.priceType;
 
   $("#sPrice").textContent =
     state.priceType === "市價"
@@ -764,9 +855,7 @@ function updateSummary(){
   updateSubmitButton();
 }
 
-
 function updateSubmitButton(){
-
   const btn = $("#submitBtn");
 
   if(!state.stockValidated){
@@ -776,14 +865,17 @@ function updateSubmitButton(){
   }
 
   btn.disabled = false;
-  btn.textContent = "送出委託";
+
+  if(state.side === "取消買進"){
+    btn.textContent = "送出取消買進";
+  }else if(state.side === "取消賣出"){
+    btn.textContent = "送出取消賣出";
+  }else{
+    btn.textContent = "送出委託";
+  }
 }
 
-
-/* ---------- JSON ---------- */
-
 function buildPayload(){
-
   const qty = Number($("#qty").value || 0);
 
   const price =
@@ -796,37 +888,35 @@ function buildPayload(){
       ? qty * 1000
       : qty;
 
+  const isCancel =
+    state.side === "取消買進" ||
+    state.side === "取消賣出";
+
   return {
-    event: "stock_order",
+    event: isCancel ? "stock_order_cancel" : "stock_order",
 
     timestamp: new Date().toISOString(),
 
     order: {
+      action: state.side,
+
       stockCode: state.stock.code,
       stockName: state.stock.name,
-      stockFullName: state.stock.fullName,
 
       exchange: state.stock.exchange,
+      market: state.stock.market,
       marketName: state.stock.marketName,
+      assetType: state.stock.assetTypeName,
 
       side: state.side,
-
-      market: state.market,
+      orderType: state.market,
       session: state.session,
-
       accountType: state.account,
-
       timeInForce: state.tif,
-
       priceType: state.priceType,
 
       quantity: qty,
-
-      quantityUnit:
-        state.market === "整股"
-          ? "張"
-          : "股",
-
+      quantityUnit: state.market === "整股" ? "張" : "股",
       shares: shares,
 
       price: price,
@@ -840,8 +930,11 @@ function buildPayload(){
     marketSnapshot: {
       lastPrice: state.stock.lastPrice,
       previousClose: state.stock.previousClose,
-      quoteDate: state.stock.quoteDate,
-      quoteTime: state.stock.quoteTime
+      change: state.stock.change,
+      changePercent: state.stock.changePercent,
+      high: state.stock.high,
+      low: state.stock.low,
+      lastUpdated: state.stock.lastUpdated
     },
 
     source: {
@@ -851,26 +944,23 @@ function buildPayload(){
   };
 }
 
-
 function validate(payload){
-
   if(!state.stockValidated){
     return "股票代碼尚未通過確認";
   }
 
-  if(
-    !payload.order.quantity ||
-    payload.order.quantity <= 0
-  ){
+  if(!payload.order.quantity || payload.order.quantity <= 0){
     return "請輸入正確數量";
   }
 
+  /*
+    如果你的後端取消委託是依 orderId，
+    建議下一版加入「原委託單號」欄位。
+  */
   if(
     payload.order.priceType === "限價" &&
-    (
-      !payload.order.price ||
-      payload.order.price <= 0
-    )
+    !String(payload.order.action).startsWith("取消") &&
+    (!payload.order.price || payload.order.price <= 0)
   ){
     return "請輸入限價價格";
   }
@@ -885,16 +975,11 @@ function validate(payload){
   return "";
 }
 
-
-/* ---------- 送出 Webhook ---------- */
-
 $("#submitBtn").onclick = async () => {
-
   const btn = $("#submitBtn");
   const msg = $("#msg");
 
   const payload = buildPayload();
-
   const error = validate(payload);
 
   msg.className = "msg";
@@ -906,26 +991,25 @@ $("#submitBtn").onclick = async () => {
   }
 
   const confirmText =
-    `${payload.order.side} ` +
+    `${payload.order.action} ` +
     `${payload.order.stockCode} ${payload.order.stockName}\n` +
-    `${payload.order.quantity} ${payload.order.quantityUnit}\n` +
-    `價格：${payload.order.priceType === "市價" ? "市價" : payload.order.price}`;
+    `${payload.order.quantity} ${payload.order.quantityUnit}` +
+    (
+      String(payload.order.action).startsWith("取消")
+        ? ""
+        : `\n價格：${payload.order.priceType === "市價" ? "市價" : payload.order.price}`
+    );
 
-  if(!confirm(confirmText)){
-    return;
-  }
+  if(!confirm(confirmText)) return;
 
   btn.disabled = true;
   btn.textContent = "傳送中…";
   msg.textContent = "";
 
   try{
-
     const response = await fetch(WEBHOOK_URL, {
       method: "POST",
-      headers: {
-        "Content-Type":"application/json"
-      },
+      headers: {"Content-Type":"application/json"},
       body: JSON.stringify(payload)
     });
 
@@ -933,28 +1017,19 @@ $("#submitBtn").onclick = async () => {
       throw new Error("HTTP " + response.status);
     }
 
-    msg.textContent = "✓ 委託資料已傳送";
+    msg.textContent = "✓ 資料已傳送";
     msg.classList.add("ok");
 
   }catch(err){
-
     console.error(err);
-
-    msg.textContent =
-      "傳送失敗：" + err.message;
-
+    msg.textContent = "傳送失敗：" + err.message;
     msg.classList.add("err");
-
   }finally{
-
     updateSubmitButton();
-
   }
 };
 
-
 updateSummary();
-
 </script>
 </body>
 </html>
