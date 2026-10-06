@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#109db0" />
-  <title>台股下單</title>
+  <title>台股下單 / 指數行情</title>
 
   <style>
     :root{
@@ -19,8 +19,11 @@
       --success:#159a7d;
       --up:#d94040;
       --down:#16885e;
+      --warn:#c17a00;
     }
+
     *{box-sizing:border-box}
+
     body{
       margin:0;
       background:var(--bg);
@@ -28,6 +31,7 @@
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",
         "PingFang TC","Microsoft JhengHei",sans-serif;
     }
+
     .app{
       width:min(100%,760px);
       min-height:100vh;
@@ -35,6 +39,7 @@
       background:#fff;
       padding-bottom:115px;
     }
+
     button{font-family:inherit}
 
     .top-tabs,.trade-tabs,.segmented,.three-tabs{
@@ -42,11 +47,13 @@
       gap:1px;
       background:#dce3e5;
     }
+
     .top-tabs{
       grid-template-columns:1fr 1fr;
       padding:10px 12px 0;
       background:#087c84;
     }
+
     .trade-tabs{
       grid-template-columns:repeat(4,1fr);
       background:#07898f;
@@ -60,6 +67,7 @@
       font-size:20px;
       cursor:pointer;
     }
+
     .top-tabs button:first-child{border-radius:10px 0 0 10px}
     .top-tabs button:last-child{border-radius:0 10px 10px 0}
 
@@ -75,6 +83,7 @@
       font-size:18px;
       padding:18px 5px;
     }
+
     .trade-tabs button.active{
       background:#07898f;
       color:#fff;
@@ -96,6 +105,7 @@
       padding:12px 14px;
       border:1px solid #edf0f1;
     }
+
     .search input{
       width:100%;
       border:0;
@@ -103,6 +113,7 @@
       font-size:18px;
       background:transparent;
     }
+
     .lookup-btn{
       border:0;
       border-radius:9px;
@@ -118,6 +129,12 @@
       margin-top:8px;
       font-size:14px;
       color:#777;
+      line-height:1.6;
+    }
+
+    .lookup-status.warning{
+      color:var(--warn);
+      font-weight:700;
     }
 
     .stock-card{
@@ -128,16 +145,19 @@
       background:#fff;
       border:1px solid var(--line);
     }
+
     .stock-card.ok{
       display:block;
       border-color:#b9e6da;
       background:#f5fffb;
     }
+
     .stock-card.error{
       display:block;
       border-color:#f1c4c2;
       background:#fff8f8;
     }
+
     .stock-title{
       display:flex;
       align-items:center;
@@ -145,7 +165,9 @@
       flex-wrap:wrap;
       margin-bottom:10px;
     }
+
     .stock-title strong{font-size:21px}
+
     .badge{
       display:inline-block;
       border-radius:999px;
@@ -156,27 +178,46 @@
       font-weight:800;
     }
 
+    .index-mode{
+      display:none;
+      margin-bottom:10px;
+      padding:10px 12px;
+      border-radius:9px;
+      background:#eef8ff;
+      color:#356b89;
+      font-weight:700;
+      font-size:14px;
+    }
+
+    .index-mode.show{
+      display:block;
+    }
+
     .quote-grid{
       display:grid;
       grid-template-columns:repeat(3,1fr);
       gap:8px;
     }
+
     .quote-item{
       border-radius:9px;
       background:#fff;
       border:1px solid #e8eeee;
       padding:9px;
     }
+
     .quote-label{
       font-size:12px;
       color:#8b9296;
       margin-bottom:3px;
     }
+
     .quote-value{
       font-size:18px;
       font-weight:800;
       color:#333;
     }
+
     .up{color:var(--up)!important}
     .down{color:var(--down)!important}
     .flat{color:#666!important}
@@ -192,14 +233,17 @@
       grid-template-columns:1fr 1fr;
       margin-bottom:10px;
     }
+
     .three-tabs{
       grid-template-columns:1fr 1fr 1fr;
       margin-bottom:10px;
     }
+
     .segmented button,.three-tabs button{
       font-size:18px;
       border-radius:8px;
     }
+
     button:disabled{
       background:#d2d2d2!important;
       color:#999!important;
@@ -220,6 +264,7 @@
       overflow:hidden;
       background:#fff;
     }
+
     .stepper button{
       border:0;
       background:#c8f0f5;
@@ -227,6 +272,7 @@
       font-size:30px;
       cursor:pointer;
     }
+
     .stepper input{
       border:0;
       outline:0;
@@ -241,6 +287,7 @@
       grid-template-columns:1fr 1fr;
       gap:10px;
     }
+
     .summary{
       background:#fff;
       border:1px solid var(--line);
@@ -249,6 +296,7 @@
       font-size:15px;
       line-height:2;
     }
+
     .summary b{
       float:right;
       color:#222;
@@ -264,6 +312,7 @@
       background:rgba(255,255,255,.97);
       border-top:1px solid #eceff0;
     }
+
     .submit{
       width:100%;
       border:0;
@@ -275,17 +324,24 @@
       font-weight:800;
       cursor:pointer;
     }
+
     .submit:disabled{
       background:#aaa!important;
       color:#fff!important;
     }
+
     .msg{
       margin-top:8px;
       text-align:center;
       font-size:14px;
     }
+
     .msg.ok{color:var(--success)}
     .msg.err{color:var(--danger)}
+
+    .hidden{
+      display:none!important;
+    }
 
     @media(max-width:600px){
       .trade-tabs button{font-size:15px}
@@ -299,35 +355,60 @@
 <body>
 <main class="app">
 
-  <div class="top-tabs">
-    <button class="active" data-market="整股">整股</button>
-    <button data-market="零股">零股</button>
-  </div>
+  <!-- 股票 / ETF 才顯示 -->
+  <div id="orderHeader">
+    <div class="top-tabs">
+      <button class="active" data-market="整股">整股</button>
+      <button data-market="零股">零股</button>
+    </div>
 
-  <div class="trade-tabs">
-    <button class="active" data-side="買進">買進</button>
-    <button data-side="賣出">賣出</button>
-    <button data-side="取消買進">取消買進</button>
-    <button data-side="取消賣出">取消賣出</button>
+    <div class="trade-tabs">
+      <button class="active" data-side="買進">買進</button>
+      <button data-side="賣出">賣出</button>
+      <button data-side="取消買進">取消買進</button>
+      <button data-side="取消賣出">取消賣出</button>
+    </div>
   </div>
 
   <section class="search-wrap">
     <div class="search">
       <span style="font-size:28px">⌕</span>
+
       <input
         id="stockInput"
-        maxlength="8"
-        placeholder="輸入台股代碼，例如 2330、0050、00981A"
+        maxlength="12"
+        placeholder="輸入 2330、8299、0050、101、TAIEX"
         autocomplete="off"
       >
-      <button class="lookup-btn" id="lookupBtn" type="button">查詢</button>
+
+      <button
+        class="lookup-btn"
+        id="lookupBtn"
+        type="button"
+      >
+        查詢
+      </button>
     </div>
 
-    <div class="lookup-status" id="lookupStatus">
-      查詢後每 10 秒更新一次即時報價；離開頁面時會暫停更新。
+    <div
+      class="lookup-status"
+      id="lookupStatus"
+    >
+      查詢後每 10 秒更新一次行情。
     </div>
 
-    <div class="stock-card" id="stockCard">
+    <div
+      class="stock-card"
+      id="stockCard"
+    >
+
+      <div
+        class="index-mode"
+        id="indexModeNotice"
+      >
+        指數為純行情模式，不提供買進、賣出或取消委託。
+      </div>
+
       <div class="stock-title">
         <strong id="stockName">—</strong>
         <span class="badge" id="stockMarket">—</span>
@@ -335,701 +416,2193 @@
       </div>
 
       <div class="quote-grid">
+
         <div class="quote-item">
-          <div class="quote-label">即時成交價</div>
-          <div class="quote-value" id="lastPrice">—</div>
+          <div
+            class="quote-label"
+            id="lastPriceLabel"
+          >
+            即時成交價
+          </div>
+          <div
+            class="quote-value"
+            id="lastPrice"
+          >
+            —
+          </div>
         </div>
+
         <div class="quote-item">
-          <div class="quote-label">昨收</div>
-          <div class="quote-value" id="previousClose">—</div>
+          <div class="quote-label">
+            昨收
+          </div>
+          <div
+            class="quote-value"
+            id="previousClose"
+          >
+            —
+          </div>
         </div>
+
         <div class="quote-item">
-          <div class="quote-label">漲跌</div>
-          <div class="quote-value" id="changePrice">—</div>
+          <div class="quote-label">
+            漲跌
+          </div>
+          <div
+            class="quote-value"
+            id="changePrice"
+          >
+            —
+          </div>
         </div>
+
         <div class="quote-item">
-          <div class="quote-label">漲跌幅</div>
-          <div class="quote-value" id="changePercent">—</div>
+          <div class="quote-label">
+            漲跌幅
+          </div>
+          <div
+            class="quote-value"
+            id="changePercent"
+          >
+            —
+          </div>
         </div>
+
         <div class="quote-item">
-          <div class="quote-label">最高</div>
-          <div class="quote-value" id="highPrice">—</div>
+          <div class="quote-label">
+            開盤
+          </div>
+          <div
+            class="quote-value"
+            id="openPrice"
+          >
+            —
+          </div>
         </div>
+
         <div class="quote-item">
-          <div class="quote-label">最低</div>
-          <div class="quote-value" id="lowPrice">—</div>
+          <div class="quote-label">
+            最高
+          </div>
+          <div
+            class="quote-value"
+            id="highPrice"
+          >
+            —
+          </div>
         </div>
+
+        <div class="quote-item">
+          <div class="quote-label">
+            最低
+          </div>
+          <div
+            class="quote-value"
+            id="lowPrice"
+          >
+            —
+          </div>
+        </div>
+
       </div>
 
       <div class="stock-info">
-        股票代碼：<span id="stockCode">—</span><br>
-        市場：<span id="marketDetail">—</span><br>
-        更新時間：<span id="quoteUpdated">—</span>
-      </div>
-    </div>
-  </section>
+        代碼：
+        <span id="stockCode">—</span>
+        <br>
 
-  <section class="section">
-    <div class="segmented">
-      <button class="active" data-session="整股">整股</button>
-      <button data-session="盤後">盤後</button>
-    </div>
+        市場：
+        <span id="marketDetail">—</span>
+        <br>
 
-    <div class="three-tabs">
-      <button class="active" data-account="現股">現股</button>
-      <button data-account="融資" disabled>融資</button>
-      <button data-account="融券" disabled>融券</button>
-    </div>
+        行情日期：
+        <span id="quoteDate">—</span>
+        <br>
 
-    <div class="three-tabs">
-      <button class="active" data-tif="ROD">ROD</button>
-      <button data-tif="IOC">IOC</button>
-      <button data-tif="FOK">FOK</button>
-    </div>
-  </section>
-
-  <section class="section">
-
-    <div class="label">單位</div>
-    <div class="stepper">
-      <button type="button" onclick="stepValue('qty',-1)">−</button>
-      <input id="qty" type="number" min="1" step="1" value="1">
-      <button type="button" onclick="stepValue('qty',1)">＋</button>
-    </div>
-
-    <div class="label">價位</div>
-
-    <div class="segmented">
-      <button class="active" data-price-type="限價">限價</button>
-      <button data-price-type="市價">市價</button>
-    </div>
-
-    <div class="stepper" id="priceStepper">
-      <button type="button" onclick="stepValue('price',-0.1)">−</button>
-      <input id="price" type="number" min="0" step="0.1" placeholder="輸入委託價格">
-      <button type="button" onclick="stepValue('price',0.1)">＋</button>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="grid2">
-      <div class="summary">
-        股票 <b id="sStock">—</b><br>
-        市場 <b id="sExchange">—</b><br>
-        操作 <b id="sSide">買進</b><br>
-        類型 <b id="sMarket">整股</b>
+        更新時間：
+        <span id="quoteUpdated">—</span>
       </div>
 
-      <div class="summary">
-        數量 <b id="sQty">1 張</b><br>
-        價格類型 <b id="sPriceType">限價</b><br>
-        委託價格 <b id="sPrice">—</b><br>
-        預估金額 <b id="sAmount">—</b>
-      </div>
     </div>
   </section>
+
+
+  <!-- 股票 / ETF 的下單設定 -->
+  <div id="orderArea">
+
+    <section class="section">
+
+      <div class="segmented">
+        <button
+          class="active"
+          data-session="整股"
+        >
+          整股
+        </button>
+
+        <button data-session="盤後">
+          盤後
+        </button>
+      </div>
+
+      <div class="three-tabs">
+        <button
+          class="active"
+          data-account="現股"
+        >
+          現股
+        </button>
+
+        <button
+          data-account="融資"
+          disabled
+        >
+          融資
+        </button>
+
+        <button
+          data-account="融券"
+          disabled
+        >
+          融券
+        </button>
+      </div>
+
+      <div class="three-tabs">
+        <button
+          class="active"
+          data-tif="ROD"
+        >
+          ROD
+        </button>
+
+        <button data-tif="IOC">
+          IOC
+        </button>
+
+        <button data-tif="FOK">
+          FOK
+        </button>
+      </div>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="label">
+        單位
+      </div>
+
+      <div class="stepper">
+        <button
+          type="button"
+          onclick="stepValue('qty',-1)"
+        >
+          −
+        </button>
+
+        <input
+          id="qty"
+          type="number"
+          min="1"
+          step="1"
+          value="1"
+        >
+
+        <button
+          type="button"
+          onclick="stepValue('qty',1)"
+        >
+          ＋
+        </button>
+      </div>
+
+
+      <div class="label">
+        價位
+      </div>
+
+      <div class="segmented">
+        <button
+          class="active"
+          data-price-type="限價"
+        >
+          限價
+        </button>
+
+        <button
+          data-price-type="市價"
+        >
+          市價
+        </button>
+      </div>
+
+      <div
+        class="stepper"
+        id="priceStepper"
+      >
+        <button
+          type="button"
+          onclick="stepValue('price',-0.1)"
+        >
+          −
+        </button>
+
+        <input
+          id="price"
+          type="number"
+          min="0"
+          step="0.1"
+          placeholder="輸入委託價格"
+        >
+
+        <button
+          type="button"
+          onclick="stepValue('price',0.1)"
+        >
+          ＋
+        </button>
+      </div>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="grid2">
+
+        <div class="summary">
+          股票
+          <b id="sStock">—</b>
+          <br>
+
+          市場
+          <b id="sExchange">—</b>
+          <br>
+
+          操作
+          <b id="sSide">買進</b>
+          <br>
+
+          類型
+          <b id="sMarket">整股</b>
+        </div>
+
+        <div class="summary">
+          數量
+          <b id="sQty">1 張</b>
+          <br>
+
+          價格類型
+          <b id="sPriceType">限價</b>
+          <br>
+
+          委託價格
+          <b id="sPrice">—</b>
+          <br>
+
+          預估金額
+          <b id="sAmount">—</b>
+        </div>
+
+      </div>
+
+    </section>
+
+  </div>
 
 </main>
 
-<div class="submit-bar">
-  <button class="submit" id="submitBtn" type="button" disabled>
+
+<div
+  class="submit-bar"
+  id="submitBar"
+>
+  <button
+    class="submit"
+    id="submitBtn"
+    type="button"
+    disabled
+  >
     請先查詢有效股票代碼
   </button>
-  <div class="msg" id="msg"></div>
+
+  <div
+    class="msg"
+    id="msg"
+  ></div>
 </div>
+
 
 <script>
 /* =====================================================
-   1. 你的下單 / 取消 Webhook
+   1. 下單 / 取消 Webhook
 ===================================================== */
-const WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE";
+
+const WEBHOOK_URL =
+  "https://hook.us1.make.com/uyw1n1kkqb2giaozdu6me9kurkv9u8w4";
+
 
 /* =====================================================
-   2. 你的 GAS 即時報價 Web App
+   2. GAS 行情 API
 ===================================================== */
-const STOCK_LOOKUP_URL =
-  "https://script.google.com/macros/s/AKfycbyzlpRBuu0Ogs6HGijoRwsEHuzbPQkb5uZyxXRThmGtblgDHOe27Bgdk_ORbkMdpOOgEw/exec";
 
-/*
-  免費 Fugle 基本用戶為 60 次/分鐘。
-  10 秒更新 = 每個開啟頁面約 6 次/分鐘。
-  若只有少數人使用，可改成 5000。
-*/
-const QUOTE_REFRESH_MS = 10000;
+const STOCK_LOOKUP_URL =
+  "https://script.google.com/macros/s/AKfycbwIechPc5YjMOg6SUGnUptIBqJwB2NrS8zdXBwBf8XWGptdC6X2At8wzFfce3SX_4ewxg/exec";
+
+
+/* =====================================================
+   3. 每 10 秒更新
+===================================================== */
+
+const QUOTE_REFRESH_MS =
+  10000;
+
+
+/* =====================================================
+   State
+===================================================== */
 
 const state = {
+
   market: "整股",
+
   side: "買進",
+
   session: "整股",
+
   account: "現股",
+
   tif: "ROD",
+
   priceType: "限價",
 
   stockValidated: false,
+
   stock: null,
+
   quoteTimer: null,
+
   quoteBusy: false
 };
 
-const $ = s => document.querySelector(s);
-const $$ = s => [...document.querySelectorAll(s)];
 
-function activate(selector, clicked){
-  $$(selector).forEach(btn => btn.classList.remove("active"));
-  clicked.classList.add("active");
+const $ =
+  selector =>
+    document.querySelector(
+      selector
+    );
+
+
+const $$ =
+  selector =>
+    [
+      ...document.querySelectorAll(
+        selector
+      )
+    ];
+
+
+/* =====================================================
+   Tab
+===================================================== */
+
+function activate(
+  selector,
+  clicked
+){
+
+  $$(selector).forEach(
+    btn =>
+      btn.classList.remove(
+        "active"
+      )
+  );
+
+  clicked.classList.add(
+    "active"
+  );
+
 }
 
-$$("[data-market]").forEach(btn => {
-  btn.onclick = () => {
-    activate("[data-market]", btn);
-    state.market = btn.dataset.market;
-    updateSummary();
-  };
-});
 
-$$("[data-side]").forEach(btn => {
-  btn.onclick = () => {
-    activate("[data-side]", btn);
-    state.side = btn.dataset.side;
-    updateSummary();
-  };
-});
+$$("[data-market]").forEach(
+  btn => {
 
-$$("[data-session]").forEach(btn => {
-  btn.onclick = () => {
-    activate("[data-session]", btn);
-    state.session = btn.dataset.session;
-  };
-});
+    btn.onclick = () => {
 
-$$("[data-account]").forEach(btn => {
-  btn.onclick = () => {
-    if(btn.disabled) return;
-    activate("[data-account]", btn);
-    state.account = btn.dataset.account;
-  };
-});
+      activate(
+        "[data-market]",
+        btn
+      );
 
-$$("[data-tif]").forEach(btn => {
-  btn.onclick = () => {
-    activate("[data-tif]", btn);
-    state.tif = btn.dataset.tif;
-  };
-});
+      state.market =
+        btn.dataset.market;
 
-$$("[data-price-type]").forEach(btn => {
-  btn.onclick = () => {
-    activate("[data-price-type]", btn);
-    state.priceType = btn.dataset.priceType;
+      updateSummary();
 
-    const marketPrice = state.priceType === "市價";
-    $("#price").disabled = marketPrice;
-    $("#priceStepper").style.opacity = marketPrice ? ".45" : "1";
+    };
 
-    updateSummary();
-  };
-});
+  }
+);
 
-function normalizeStockCode(value){
-  return String(value || "")
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, "");
+
+$$("[data-side]").forEach(
+  btn => {
+
+    btn.onclick = () => {
+
+      activate(
+        "[data-side]",
+        btn
+      );
+
+      state.side =
+        btn.dataset.side;
+
+      updateSummary();
+
+    };
+
+  }
+);
+
+
+$$("[data-session]").forEach(
+  btn => {
+
+    btn.onclick = () => {
+
+      activate(
+        "[data-session]",
+        btn
+      );
+
+      state.session =
+        btn.dataset.session;
+
+    };
+
+  }
+);
+
+
+$$("[data-account]").forEach(
+  btn => {
+
+    btn.onclick = () => {
+
+      if(
+        btn.disabled
+      ){
+        return;
+      }
+
+      activate(
+        "[data-account]",
+        btn
+      );
+
+      state.account =
+        btn.dataset.account;
+
+    };
+
+  }
+);
+
+
+$$("[data-tif]").forEach(
+  btn => {
+
+    btn.onclick = () => {
+
+      activate(
+        "[data-tif]",
+        btn
+      );
+
+      state.tif =
+        btn.dataset.tif;
+
+    };
+
+  }
+);
+
+
+$$("[data-price-type]").forEach(
+  btn => {
+
+    btn.onclick = () => {
+
+      activate(
+        "[data-price-type]",
+        btn
+      );
+
+      state.priceType =
+        btn.dataset.priceType;
+
+
+      const marketPrice =
+        state.priceType ===
+        "市價";
+
+
+      $("#price").disabled =
+        marketPrice;
+
+
+      $("#priceStepper").style.opacity =
+        marketPrice
+          ? ".45"
+          : "1";
+
+
+      updateSummary();
+
+    };
+
+  }
+);
+
+
+/* =====================================================
+   股票代碼
+===================================================== */
+
+function normalizeStockCode(
+  value
+){
+
+  return String(
+    value || ""
+  )
+  .trim()
+  .toUpperCase()
+  .replace(
+    /\s+/g,
+    ""
+  );
+
 }
+
+
+/* =====================================================
+   Timer
+===================================================== */
 
 function stopQuoteTimer(){
-  if(state.quoteTimer){
-    clearInterval(state.quoteTimer);
-    state.quoteTimer = null;
+
+  if(
+    state.quoteTimer
+  ){
+
+    clearInterval(
+      state.quoteTimer
+    );
+
+    state.quoteTimer =
+      null;
+
   }
+
 }
+
 
 function startQuoteTimer(){
+
   stopQuoteTimer();
 
-  if(!state.stockValidated || !state.stock) return;
 
-  state.quoteTimer = setInterval(() => {
-    if(!document.hidden){
-      refreshQuote(false);
-    }
-  }, QUOTE_REFRESH_MS);
+  if(
+    !state.stockValidated ||
+    !state.stock
+  ){
+    return;
+  }
+
+
+  state.quoteTimer =
+    setInterval(
+      () => {
+
+        if(
+          !document.hidden
+        ){
+
+          refreshQuote(
+            false
+          );
+
+        }
+
+      },
+      QUOTE_REFRESH_MS
+    );
+
 }
 
-document.addEventListener("visibilitychange", () => {
-  if(!document.hidden && state.stockValidated){
-    refreshQuote(false);
+
+document.addEventListener(
+  "visibilitychange",
+  () => {
+
+    if(
+      !document.hidden &&
+      state.stockValidated
+    ){
+
+      refreshQuote(
+        false
+      );
+
+    }
+
   }
-});
+);
+
+
+/* =====================================================
+   清空
+===================================================== */
 
 function clearValidatedStock(){
+
   stopQuoteTimer();
 
-  state.stockValidated = false;
-  state.stock = null;
 
-  $("#stockCard").className = "stock-card";
-  $("#stockName").textContent = "—";
-  $("#stockMarket").textContent = "—";
-  $("#stockType").textContent = "—";
-  $("#stockCode").textContent = "—";
-  $("#marketDetail").textContent = "—";
-  $("#quoteUpdated").textContent = "—";
+  state.stockValidated =
+    false;
 
-  setQuoteValue("#lastPrice", null);
-  setQuoteValue("#previousClose", null);
-  setQuoteValue("#changePrice", null);
-  setQuoteValue("#changePercent", null);
-  setQuoteValue("#highPrice", null);
-  setQuoteValue("#lowPrice", null);
+  state.stock =
+    null;
+
+
+  $("#stockCard").className =
+    "stock-card";
+
+
+  $("#indexModeNotice")
+    .classList.remove(
+      "show"
+    );
+
+
+  $("#stockName").textContent =
+    "—";
+
+  $("#stockMarket").textContent =
+    "—";
+
+  $("#stockType").textContent =
+    "—";
+
+  $("#stockCode").textContent =
+    "—";
+
+  $("#marketDetail").textContent =
+    "—";
+
+  $("#quoteDate").textContent =
+    "—";
+
+  $("#quoteUpdated").textContent =
+    "—";
+
+
+  $("#lastPriceLabel").textContent =
+    "即時成交價";
+
+
+  setQuoteValue(
+    "#lastPrice",
+    null
+  );
+
+  setQuoteValue(
+    "#previousClose",
+    null
+  );
+
+  setQuoteValue(
+    "#openPrice",
+    null
+  );
+
+  setQuoteValue(
+    "#highPrice",
+    null
+  );
+
+  setQuoteValue(
+    "#lowPrice",
+    null
+  );
+
+  setChangeValue(
+    "#changePrice",
+    null,
+    false
+  );
+
+  setChangeValue(
+    "#changePercent",
+    null,
+    true
+  );
+
+
+  setIndexMode(
+    false
+  );
+
 
   updateSubmitButton();
+
   updateSummary();
+
 }
 
-$("#stockInput").addEventListener("input", () => {
-  clearValidatedStock();
-  $("#lookupStatus").textContent = "代碼已變更，請重新查詢確認。";
-});
 
-$("#stockInput").addEventListener("keydown", e => {
-  if(e.key === "Enter") lookupStock();
-});
+$("#stockInput")
+  .addEventListener(
+    "input",
+    () => {
 
-$("#lookupBtn").addEventListener("click", lookupStock);
+      clearValidatedStock();
+
+      $("#lookupStatus")
+        .classList.remove(
+          "warning"
+        );
+
+
+      $("#lookupStatus")
+        .textContent =
+        "代碼已變更，請重新查詢確認。";
+
+    }
+  );
+
+
+$("#stockInput")
+  .addEventListener(
+    "keydown",
+    e => {
+
+      if(
+        e.key === "Enter"
+      ){
+
+        lookupStock();
+
+      }
+
+    }
+  );
+
+
+$("#lookupBtn")
+  .addEventListener(
+    "click",
+    lookupStock
+  );
+
+
+/* =====================================================
+   查詢
+===================================================== */
 
 async function lookupStock(){
-  const code = normalizeStockCode($("#stockInput").value);
+
+  const code =
+    normalizeStockCode(
+      $("#stockInput").value
+    );
+
 
   clearValidatedStock();
 
-  if(!code){
-    showLookupError("請輸入股票代碼");
+
+  if(
+    !code
+  ){
+
+    showLookupError(
+      "請輸入股票、ETF 或指數代碼"
+    );
+
     return;
   }
 
-  if(!/^[0-9A-Z]{4,8}$/.test(code)){
-    showLookupError("股票代碼格式不正確");
-    return;
-  }
 
-  $("#lookupBtn").disabled = true;
-  $("#lookupBtn").textContent = "查詢中…";
-  $("#lookupStatus").textContent = "正在查詢上市／上櫃／ETF…";
+  $("#lookupBtn").disabled =
+    true;
+
+  $("#lookupBtn").textContent =
+    "查詢中…";
+
+
+  $("#lookupStatus")
+    .classList.remove(
+      "warning"
+    );
+
+
+  $("#lookupStatus").textContent =
+    "正在查詢股票 / ETF / 指數…";
+
 
   try{
-    const data = await fetchStock(code);
 
-    if(!data.ok || !data.stock){
-      showLookupError(data.message || "找不到此台股代碼");
+    const data =
+      await fetchStock(
+        code
+      );
+
+
+    if(
+      !data.ok ||
+      !data.stock
+    ){
+
+      showLookupError(
+        data.message ||
+        "找不到此代碼"
+      );
+
       return;
+
     }
 
-    applyStockData(data.stock, true);
 
-    state.stockValidated = true;
+    applyStockData(
+      data.stock,
+      true
+    );
+
+
+    state.stockValidated =
+      true;
+
+
     updateSubmitButton();
+
     updateSummary();
+
     startQuoteTimer();
 
+
   }catch(err){
-    console.error(err);
-    showLookupError("股票查詢失敗：" + err.message);
+
+    console.error(
+      err
+    );
+
+
+    showLookupError(
+      "查詢失敗：" +
+      err.message
+    );
+
+
   }finally{
-    $("#lookupBtn").disabled = false;
-    $("#lookupBtn").textContent = "查詢";
+
+    $("#lookupBtn").disabled =
+      false;
+
+    $("#lookupBtn").textContent =
+      "查詢";
+
   }
+
 }
 
-async function refreshQuote(showStatus){
-  if(!state.stockValidated || !state.stock || state.quoteBusy) return;
 
-  state.quoteBusy = true;
+/* =====================================================
+   自動更新行情
+===================================================== */
+
+async function refreshQuote(
+  showStatus
+){
+
+  if(
+    !state.stockValidated ||
+    !state.stock ||
+    state.quoteBusy
+  ){
+    return;
+  }
+
+
+  state.quoteBusy =
+    true;
+
 
   try{
-    if(showStatus){
-      $("#lookupStatus").textContent = "更新即時報價中…";
+
+    if(
+      showStatus
+    ){
+
+      $("#lookupStatus")
+        .textContent =
+        "更新行情中…";
+
     }
 
-    const data = await fetchStock(state.stock.code);
 
-    if(data.ok && data.stock){
-      applyStockData(data.stock, false);
+    /*
+      重要：
+      指數使用 GAS 回傳的真正 code，
+      例如 101 查到後會變成 IX0043。
+    */
+    const queryCode =
+      state.stock.code;
+
+
+    const data =
+      await fetchStock(
+        queryCode
+      );
+
+
+    if(
+      data.ok &&
+      data.stock
+    ){
+
+      applyStockData(
+        data.stock,
+        false
+      );
+
     }
+
+
   }catch(err){
-    console.error("即時報價更新失敗", err);
+
+    console.error(
+      "行情更新失敗",
+      err
+    );
+
+
   }finally{
-    state.quoteBusy = false;
+
+    state.quoteBusy =
+      false;
+
   }
+
 }
 
-async function fetchStock(code){
+
+/* =====================================================
+   API
+===================================================== */
+
+async function fetchStock(
+  code
+){
+
   const url =
     STOCK_LOOKUP_URL +
     "?code=" +
-    encodeURIComponent(code) +
+    encodeURIComponent(
+      code
+    ) +
     "&t=" +
     Date.now();
 
-  const response = await fetch(url, {
-    method: "GET",
-    cache: "no-store"
-  });
 
-  if(!response.ok){
-    throw new Error("HTTP " + response.status);
-  }
+  const response =
+    await fetch(
+      url,
+      {
+        method: "GET",
+        cache: "no-store"
+      }
+    );
 
-  return await response.json();
-}
-
-function applyStockData(stock, firstLoad){
-  state.stock = stock;
-
-  $("#stockCard").className = "stock-card ok";
-  $("#stockName").textContent = stock.name || stock.code;
-  $("#stockMarket").textContent = stock.marketName || stock.market || stock.exchange;
-  $("#stockType").textContent = stock.assetTypeName || stock.type || "台股";
-  $("#stockCode").textContent = stock.code || "—";
-  $("#marketDetail").textContent =
-    `${stock.exchange || "—"} / ${stock.market || "—"}`;
-
-  setQuoteValue("#lastPrice", stock.lastPrice);
-  setQuoteValue("#previousClose", stock.previousClose);
-  setQuoteValue("#highPrice", stock.high);
-  setQuoteValue("#lowPrice", stock.low);
-
-  setChangeValue("#changePrice", stock.change, false);
-  setChangeValue("#changePercent", stock.changePercent, true);
-
-  $("#quoteUpdated").textContent =
-    stock.lastUpdatedText || new Date().toLocaleTimeString("zh-TW");
-
-  $("#lookupStatus").textContent =
-    `✓ 已確認；每 ${QUOTE_REFRESH_MS / 1000} 秒自動更新報價`;
 
   if(
-    firstLoad &&
-    state.priceType === "限價" &&
-    !$("#price").value &&
-    Number(stock.lastPrice) > 0
+    !response.ok
   ){
-    $("#price").value = stock.lastPrice;
+
+    throw new Error(
+      "HTTP " +
+      response.status
+    );
+
   }
+
+
+  return await response.json();
+
+}
+
+
+/* =====================================================
+   套用行情
+===================================================== */
+
+function applyStockData(
+  stock,
+  firstLoad
+){
+
+  state.stock =
+    stock;
+
+
+  $("#stockCard").className =
+    "stock-card ok";
+
+
+  $("#stockName").textContent =
+    stock.name ||
+    stock.code;
+
+
+  $("#stockMarket").textContent =
+    stock.marketName ||
+    stock.market ||
+    stock.exchange ||
+    "—";
+
+
+  $("#stockType").textContent =
+    stock.assetTypeName ||
+    (
+      stock.isIndex
+        ? "指數"
+        : "台股"
+    );
+
+
+  $("#stockCode").textContent =
+    stock.code ||
+    "—";
+
+
+  $("#marketDetail").textContent =
+    (
+      stock.exchange ||
+      "—"
+    ) +
+    " / " +
+    (
+      stock.market ||
+      "—"
+    );
+
+
+  $("#quoteDate").textContent =
+    stock.quoteDate ||
+    "—";
+
+
+  $("#quoteUpdated").textContent =
+    stock.lastUpdatedText ||
+    new Date()
+      .toLocaleTimeString(
+        "zh-TW"
+      );
+
+
+  /*
+    指數：顯示「目前指數」
+    股票 / ETF：顯示「即時成交價」
+  */
+  $("#lastPriceLabel").textContent =
+    stock.isIndex
+      ? "目前指數"
+      : (
+          stock.isClose
+            ? "收盤價"
+            : "即時成交價"
+        );
+
+
+  setQuoteValue(
+    "#lastPrice",
+    stock.lastPrice
+  );
+
+
+  setQuoteValue(
+    "#previousClose",
+    stock.previousClose
+  );
+
+
+  setQuoteValue(
+    "#openPrice",
+    stock.open
+  );
+
+
+  setQuoteValue(
+    "#highPrice",
+    stock.high
+  );
+
+
+  setQuoteValue(
+    "#lowPrice",
+    stock.low
+  );
+
+
+  setChangeValue(
+    "#changePrice",
+    stock.change,
+    false
+  );
+
+
+  setChangeValue(
+    "#changePercent",
+    stock.changePercent,
+    true
+  );
+
+
+  /*
+    日期驗證
+  */
+  if(
+    stock.quoteIsToday === false
+  ){
+
+    $("#lookupStatus")
+      .classList.add(
+        "warning"
+      );
+
+
+    $("#lookupStatus")
+      .textContent =
+      stock.quoteWarning ||
+      (
+        "⚠ 目前不是今日行情：" +
+        (
+          stock.quoteDate ||
+          "日期未知"
+        )
+      );
+
+  }else{
+
+    $("#lookupStatus")
+      .classList.remove(
+        "warning"
+      );
+
+
+    $("#lookupStatus")
+      .textContent =
+      "✓ 今日行情已確認；每 " +
+      (
+        QUOTE_REFRESH_MS /
+        1000
+      ) +
+      " 秒自動更新";
+
+  }
+
+
+  /*
+    核心：
+    指數 → 純行情模式
+    股票 / ETF → 下單模式
+  */
+  setIndexMode(
+    stock.isIndex === true
+  );
+
+
+  /*
+    股票 / ETF 第一次查詢時，
+    自動把目前價格帶入限價欄位。
+    指數不做這件事。
+  */
+  if(
+    firstLoad &&
+    !stock.isIndex &&
+    state.priceType ===
+      "限價" &&
+    !$("#price").value &&
+    Number(
+      stock.lastPrice
+    ) > 0
+  ){
+
+    $("#price").value =
+      stock.lastPrice;
+
+  }
+
 
   updateSummary();
+
 }
 
-function setQuoteValue(selector, value){
-  const el = $(selector);
-  const n = Number(value);
 
-  el.className = "quote-value";
+/* =====================================================
+   指數模式
+===================================================== */
 
-  if(!Number.isFinite(n)){
-    el.textContent = "—";
-    return;
-  }
+function setIndexMode(
+  isIndex
+){
 
-  el.textContent = n.toLocaleString("zh-TW", {
-    maximumFractionDigits: 4
-  });
-}
+  if(
+    isIndex
+  ){
 
-function setChangeValue(selector, value, isPercent){
-  const el = $(selector);
-  const n = Number(value);
+    $("#orderHeader")
+      .classList.add(
+        "hidden"
+      );
 
-  el.className = "quote-value";
 
-  if(!Number.isFinite(n)){
-    el.textContent = "—";
-    return;
-  }
+    $("#orderArea")
+      .classList.add(
+        "hidden"
+      );
 
-  let prefix = "";
-  if(n > 0){
-    el.classList.add("up");
-    prefix = "+";
-  }else if(n < 0){
-    el.classList.add("down");
+
+    $("#submitBar")
+      .classList.add(
+        "hidden"
+      );
+
+
+    $("#indexModeNotice")
+      .classList.add(
+        "show"
+      );
+
+
+    /*
+      指數頁不需要為固定下單按鈕預留空間
+    */
+    document.querySelector(
+      ".app"
+    ).style.paddingBottom =
+      "24px";
+
+
   }else{
-    el.classList.add("flat");
+
+    $("#orderHeader")
+      .classList.remove(
+        "hidden"
+      );
+
+
+    $("#orderArea")
+      .classList.remove(
+        "hidden"
+      );
+
+
+    $("#submitBar")
+      .classList.remove(
+        "hidden"
+      );
+
+
+    $("#indexModeNotice")
+      .classList.remove(
+        "show"
+      );
+
+
+    document.querySelector(
+      ".app"
+    ).style.paddingBottom =
+      "115px";
+
   }
+
+}
+
+
+/* =====================================================
+   顯示數字
+===================================================== */
+
+function setQuoteValue(
+  selector,
+  value
+){
+
+  const el =
+    $(selector);
+
+
+  const n =
+    Number(value);
+
+
+  el.className =
+    "quote-value";
+
+
+  if(
+    !Number.isFinite(n)
+  ){
+
+    el.textContent =
+      "—";
+
+    return;
+
+  }
+
+
+  el.textContent =
+    n.toLocaleString(
+      "zh-TW",
+      {
+        maximumFractionDigits: 4
+      }
+    );
+
+}
+
+
+/* =====================================================
+   漲跌顏色
+===================================================== */
+
+function setChangeValue(
+  selector,
+  value,
+  isPercent
+){
+
+  const el =
+    $(selector);
+
+
+  const n =
+    Number(value);
+
+
+  el.className =
+    "quote-value";
+
+
+  if(
+    !Number.isFinite(n)
+  ){
+
+    el.textContent =
+      "—";
+
+    return;
+
+  }
+
+
+  let prefix =
+    "";
+
+
+  if(
+    n > 0
+  ){
+
+    el.classList.add(
+      "up"
+    );
+
+    prefix =
+      "+";
+
+
+  }else if(
+    n < 0
+  ){
+
+    el.classList.add(
+      "down"
+    );
+
+
+  }else{
+
+    el.classList.add(
+      "flat"
+    );
+
+  }
+
 
   el.textContent =
     prefix +
-    n.toLocaleString("zh-TW", {
-      maximumFractionDigits: 2
-    }) +
-    (isPercent ? "%" : "");
+    n.toLocaleString(
+      "zh-TW",
+      {
+        maximumFractionDigits: 2
+      }
+    ) +
+    (
+      isPercent
+        ? "%"
+        : ""
+    );
+
 }
 
-function showLookupError(message){
-  state.stockValidated = false;
-  state.stock = null;
 
-  $("#stockCard").className = "stock-card error";
-  $("#stockName").textContent = "查無資料";
-  $("#stockMarket").textContent = "未確認";
-  $("#stockType").textContent = "—";
+/* =====================================================
+   查詢錯誤
+===================================================== */
+
+function showLookupError(
+  message
+){
+
+  state.stockValidated =
+    false;
+
+  state.stock =
+    null;
+
+
+  $("#stockCard").className =
+    "stock-card error";
+
+
+  $("#stockName").textContent =
+    "查無資料";
+
+
+  $("#stockMarket").textContent =
+    "未確認";
+
+
+  $("#stockType").textContent =
+    "—";
+
+
   $("#stockCode").textContent =
-    normalizeStockCode($("#stockInput").value) || "—";
+    normalizeStockCode(
+      $("#stockInput").value
+    ) ||
+    "—";
 
-  $("#marketDetail").textContent = "—";
-  $("#quoteUpdated").textContent = "—";
 
-  $("#lookupStatus").textContent = message;
+  $("#marketDetail").textContent =
+    "—";
+
+
+  $("#quoteDate").textContent =
+    "—";
+
+
+  $("#quoteUpdated").textContent =
+    "—";
+
+
+  $("#lookupStatus")
+    .classList.remove(
+      "warning"
+    );
+
+
+  $("#lookupStatus").textContent =
+    message;
+
+
+  setIndexMode(
+    false
+  );
+
 
   updateSubmitButton();
+
   updateSummary();
+
 }
 
-function stepValue(id, delta){
-  const el = document.getElementById(id);
-  let val = Number(el.value || 0) + delta;
 
-  if(id === "qty"){
-    val = Math.max(1, Math.round(val));
+/* =====================================================
+   Stepper
+===================================================== */
+
+function stepValue(
+  id,
+  delta
+){
+
+  const el =
+    document.getElementById(
+      id
+    );
+
+
+  let val =
+    Number(
+      el.value || 0
+    ) +
+    delta;
+
+
+  if(
+    id === "qty"
+  ){
+
+    val =
+      Math.max(
+        1,
+        Math.round(
+          val
+        )
+      );
+
   }
 
-  if(id === "price"){
-    val = Math.max(0, Math.round(val * 100) / 100);
+
+  if(
+    id === "price"
+  ){
+
+    val =
+      Math.max(
+        0,
+        Math.round(
+          val * 100
+        ) / 100
+      );
+
   }
 
-  el.value = val;
+
+  el.value =
+    val;
+
+
   updateSummary();
+
 }
 
-$("#qty").addEventListener("input", updateSummary);
-$("#price").addEventListener("input", updateSummary);
+
+$("#qty")
+  .addEventListener(
+    "input",
+    updateSummary
+  );
+
+
+$("#price")
+  .addEventListener(
+    "input",
+    updateSummary
+  );
+
+
+/* =====================================================
+   下單摘要
+===================================================== */
 
 function updateSummary(){
-  const qty = Number($("#qty").value || 0);
 
-  const price =
-    state.priceType === "市價"
-      ? null
-      : Number($("#price").value || 0);
-
-  const shares =
-    state.market === "整股"
-      ? qty * 1000
-      : qty;
-
-  const amount =
-    price && shares
-      ? Math.round(price * shares)
-      : null;
-
-  $("#sStock").textContent =
-    state.stockValidated && state.stock
-      ? `${state.stock.code} ${state.stock.name}`
-      : "—";
-
-  $("#sExchange").textContent =
-    state.stockValidated && state.stock
-      ? state.stock.marketName
-      : "—";
-
-  $("#sSide").textContent = state.side;
-  $("#sMarket").textContent = state.market;
-
-  $("#sQty").textContent =
-    qty + (state.market === "整股" ? " 張" : " 股");
-
-  $("#sPriceType").textContent = state.priceType;
-
-  $("#sPrice").textContent =
-    state.priceType === "市價"
-      ? "市價"
-      : price > 0
-        ? price.toLocaleString("zh-TW")
-        : "—";
-
-  $("#sAmount").textContent =
-    amount
-      ? "NT$ " + amount.toLocaleString("zh-TW")
-      : "—";
-
-  updateSubmitButton();
-}
-
-function updateSubmitButton(){
-  const btn = $("#submitBtn");
-
-  if(!state.stockValidated){
-    btn.disabled = true;
-    btn.textContent = "請先查詢有效股票代碼";
+  /*
+    指數沒有下單摘要
+  */
+  if(
+    state.stock &&
+    state.stock.isIndex
+  ){
     return;
   }
 
-  btn.disabled = false;
 
-  if(state.side === "取消買進"){
-    btn.textContent = "送出取消買進";
-  }else if(state.side === "取消賣出"){
-    btn.textContent = "送出取消賣出";
-  }else{
-    btn.textContent = "送出委託";
-  }
-}
+  const qty =
+    Number(
+      $("#qty").value ||
+      0
+    );
 
-function buildPayload(){
-  const qty = Number($("#qty").value || 0);
 
   const price =
-    state.priceType === "市價"
+    state.priceType ===
+      "市價"
       ? null
-      : Number($("#price").value || 0);
+      : Number(
+          $("#price").value ||
+          0
+        );
+
 
   const shares =
-    state.market === "整股"
+    state.market ===
+      "整股"
       ? qty * 1000
       : qty;
 
+
+  const amount =
+    price &&
+    shares
+      ? Math.round(
+          price *
+          shares
+        )
+      : null;
+
+
+  $("#sStock").textContent =
+    state.stockValidated &&
+    state.stock
+      ? (
+          state.stock.code +
+          " " +
+          state.stock.name
+        )
+      : "—";
+
+
+  $("#sExchange").textContent =
+    state.stockValidated &&
+    state.stock
+      ? state.stock.marketName
+      : "—";
+
+
+  $("#sSide").textContent =
+    state.side;
+
+
+  $("#sMarket").textContent =
+    state.market;
+
+
+  $("#sQty").textContent =
+    qty +
+    (
+      state.market ===
+        "整股"
+        ? " 張"
+        : " 股"
+    );
+
+
+  $("#sPriceType").textContent =
+    state.priceType;
+
+
+  $("#sPrice").textContent =
+    state.priceType ===
+      "市價"
+      ? "市價"
+      : (
+          price > 0
+            ? price.toLocaleString(
+                "zh-TW"
+              )
+            : "—"
+        );
+
+
+  $("#sAmount").textContent =
+    amount
+      ? (
+          "NT$ " +
+          amount.toLocaleString(
+            "zh-TW"
+          )
+        )
+      : "—";
+
+
+  updateSubmitButton();
+
+}
+
+
+/* =====================================================
+   送出按鈕
+===================================================== */
+
+function updateSubmitButton(){
+
+  const btn =
+    $("#submitBtn");
+
+
+  if(
+    state.stock &&
+    state.stock.isIndex
+  ){
+
+    btn.disabled =
+      true;
+
+    btn.textContent =
+      "指數僅供行情查看";
+
+    return;
+
+  }
+
+
+  if(
+    !state.stockValidated
+  ){
+
+    btn.disabled =
+      true;
+
+    btn.textContent =
+      "請先查詢有效股票代碼";
+
+    return;
+
+  }
+
+
+  btn.disabled =
+    false;
+
+
+  if(
+    state.side ===
+      "取消買進"
+  ){
+
+    btn.textContent =
+      "送出取消買進";
+
+
+  }else if(
+    state.side ===
+      "取消賣出"
+  ){
+
+    btn.textContent =
+      "送出取消賣出";
+
+
+  }else{
+
+    btn.textContent =
+      "送出委託";
+
+  }
+
+}
+
+
+/* =====================================================
+   JSON Payload
+===================================================== */
+
+function buildPayload(){
+
+  const qty =
+    Number(
+      $("#qty").value ||
+      0
+    );
+
+
+  const price =
+    state.priceType ===
+      "市價"
+      ? null
+      : Number(
+          $("#price").value ||
+          0
+        );
+
+
+  const shares =
+    state.market ===
+      "整股"
+      ? qty * 1000
+      : qty;
+
+
   const isCancel =
-    state.side === "取消買進" ||
-    state.side === "取消賣出";
+    state.side ===
+      "取消買進" ||
+    state.side ===
+      "取消賣出";
+
 
   return {
-    event: isCancel ? "stock_order_cancel" : "stock_order",
 
-    timestamp: new Date().toISOString(),
+    event:
+      isCancel
+        ? "stock_order_cancel"
+        : "stock_order",
+
+    timestamp:
+      new Date()
+        .toISOString(),
 
     order: {
-      action: state.side,
 
-      stockCode: state.stock.code,
-      stockName: state.stock.name,
+      action:
+        state.side,
 
-      exchange: state.stock.exchange,
-      market: state.stock.market,
-      marketName: state.stock.marketName,
-      assetType: state.stock.assetTypeName,
+      stockCode:
+        state.stock.code,
 
-      side: state.side,
-      orderType: state.market,
-      session: state.session,
-      accountType: state.account,
-      timeInForce: state.tif,
-      priceType: state.priceType,
+      stockName:
+        state.stock.name,
 
-      quantity: qty,
-      quantityUnit: state.market === "整股" ? "張" : "股",
-      shares: shares,
+      exchange:
+        state.stock.exchange,
 
-      price: price,
+      market:
+        state.stock.market,
+
+      marketName:
+        state.stock.marketName,
+
+      assetType:
+        state.stock.assetTypeName,
+
+      side:
+        state.side,
+
+      orderType:
+        state.market,
+
+      session:
+        state.session,
+
+      accountType:
+        state.account,
+
+      timeInForce:
+        state.tif,
+
+      priceType:
+        state.priceType,
+
+      quantity:
+        qty,
+
+      quantityUnit:
+        state.market ===
+          "整股"
+          ? "張"
+          : "股",
+
+      shares:
+        shares,
+
+      price:
+        price,
 
       estimatedAmount:
         price
-          ? Math.round(price * shares)
+          ? Math.round(
+              price *
+              shares
+            )
           : null
     },
 
     marketSnapshot: {
-      lastPrice: state.stock.lastPrice,
-      previousClose: state.stock.previousClose,
-      change: state.stock.change,
-      changePercent: state.stock.changePercent,
-      high: state.stock.high,
-      low: state.stock.low,
-      lastUpdated: state.stock.lastUpdated
+
+      quoteDate:
+        state.stock.quoteDate,
+
+      quoteIsToday:
+        state.stock.quoteIsToday,
+
+      lastPrice:
+        state.stock.lastPrice,
+
+      previousClose:
+        state.stock.previousClose,
+
+      change:
+        state.stock.change,
+
+      changePercent:
+        state.stock.changePercent,
+
+      open:
+        state.stock.open,
+
+      high:
+        state.stock.high,
+
+      low:
+        state.stock.low,
+
+      lastUpdated:
+        state.stock.lastUpdated
     },
 
     source: {
-      app: "github-pages-tw-stock-order",
-      userAgent: navigator.userAgent
+
+      app:
+        "github-pages-tw-stock-order",
+
+      userAgent:
+        navigator.userAgent
     }
+
   };
+
 }
 
-function validate(payload){
-  if(!state.stockValidated){
-    return "股票代碼尚未通過確認";
-  }
 
-  if(!payload.order.quantity || payload.order.quantity <= 0){
-    return "請輸入正確數量";
-  }
+/* =====================================================
+   驗證
+===================================================== */
 
-  /*
-    如果你的後端取消委託是依 orderId，
-    建議下一版加入「原委託單號」欄位。
-  */
+function validate(
+  payload
+){
+
   if(
-    payload.order.priceType === "限價" &&
-    !String(payload.order.action).startsWith("取消") &&
-    (!payload.order.price || payload.order.price <= 0)
+    state.stock &&
+    state.stock.isIndex
   ){
-    return "請輸入限價價格";
+
+    return "指數僅供行情查看，不能送出委託";
+
   }
+
+
+  if(
+    !state.stockValidated
+  ){
+
+    return "股票代碼尚未通過確認";
+
+  }
+
+
+  if(
+    !payload.order.quantity ||
+    payload.order.quantity <= 0
+  ){
+
+    return "請輸入正確數量";
+
+  }
+
+
+  if(
+    payload.order.priceType ===
+      "限價" &&
+    !String(
+      payload.order.action
+    ).startsWith(
+      "取消"
+    ) &&
+    (
+      !payload.order.price ||
+      payload.order.price <= 0
+    )
+  ){
+
+    return "請輸入限價價格";
+
+  }
+
 
   if(
     !WEBHOOK_URL ||
-    WEBHOOK_URL.includes("YOUR_WEBHOOK")
+    WEBHOOK_URL.includes(
+      "YOUR_WEBHOOK"
+    )
   ){
+
     return "請先設定 WEBHOOK_URL";
+
   }
+
 
   return "";
+
 }
 
-$("#submitBtn").onclick = async () => {
-  const btn = $("#submitBtn");
-  const msg = $("#msg");
 
-  const payload = buildPayload();
-  const error = validate(payload);
+/* =====================================================
+   送出
+===================================================== */
 
-  msg.className = "msg";
+$("#submitBtn").onclick =
+  async () => {
 
-  if(error){
-    msg.textContent = error;
-    msg.classList.add("err");
-    return;
-  }
+    const btn =
+      $("#submitBtn");
 
-  const confirmText =
-    `${payload.order.action} ` +
-    `${payload.order.stockCode} ${payload.order.stockName}\n` +
-    `${payload.order.quantity} ${payload.order.quantityUnit}` +
-    (
-      String(payload.order.action).startsWith("取消")
-        ? ""
-        : `\n價格：${payload.order.priceType === "市價" ? "市價" : payload.order.price}`
-    );
 
-  if(!confirm(confirmText)) return;
+    const msg =
+      $("#msg");
 
-  btn.disabled = true;
-  btn.textContent = "傳送中…";
-  msg.textContent = "";
 
-  try{
-    const response = await fetch(WEBHOOK_URL, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(payload)
-    });
+    const payload =
+      buildPayload();
 
-    if(!response.ok){
-      throw new Error("HTTP " + response.status);
+
+    const error =
+      validate(
+        payload
+      );
+
+
+    msg.className =
+      "msg";
+
+
+    if(
+      error
+    ){
+
+      msg.textContent =
+        error;
+
+      msg.classList.add(
+        "err"
+      );
+
+      return;
+
     }
 
-    msg.textContent = "✓ 資料已傳送";
-    msg.classList.add("ok");
 
-  }catch(err){
-    console.error(err);
-    msg.textContent = "傳送失敗：" + err.message;
-    msg.classList.add("err");
-  }finally{
-    updateSubmitButton();
-  }
-};
+    const confirmText =
+      payload.order.action +
+      " " +
+      payload.order.stockCode +
+      " " +
+      payload.order.stockName +
+      "\n" +
+      payload.order.quantity +
+      " " +
+      payload.order.quantityUnit +
+      (
+        String(
+          payload.order.action
+        ).startsWith(
+          "取消"
+        )
+          ? ""
+          : (
+              "\n價格：" +
+              (
+                payload.order.priceType ===
+                  "市價"
+                  ? "市價"
+                  : payload.order.price
+              )
+            )
+      );
+
+
+    if(
+      !confirm(
+        confirmText
+      )
+    ){
+      return;
+    }
+
+
+    btn.disabled =
+      true;
+
+
+    btn.textContent =
+      "傳送中…";
+
+
+    msg.textContent =
+      "";
+
+
+    try{
+
+      const response =
+        await fetch(
+          WEBHOOK_URL,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body:
+              JSON.stringify(
+                payload
+              )
+          }
+        );
+
+
+      if(
+        !response.ok
+      ){
+
+        throw new Error(
+          "HTTP " +
+          response.status
+        );
+
+      }
+
+
+      msg.textContent =
+        "✓ 資料已傳送";
+
+
+      msg.classList.add(
+        "ok"
+      );
+
+
+    }catch(err){
+
+      console.error(
+        err
+      );
+
+
+      msg.textContent =
+        "傳送失敗：" +
+        err.message;
+
+
+      msg.classList.add(
+        "err"
+      );
+
+
+    }finally{
+
+      updateSubmitButton();
+
+    }
+
+  };
+
 
 updateSummary();
+
 </script>
+
 </body>
 </html>
