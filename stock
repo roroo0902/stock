@@ -1,0 +1,1364 @@
+=========================================================
+台灣股票代碼連線版
+GitHub 股票下單介面 + Google Apps Script 股票查詢 API
+=========================================================
+
+【重要說明】
+
+本版本採用：
+GitHub Pages 前端
+        ↓
+Google Apps Script Web App
+        ↓
+台灣證券交易所 MIS
+        ↓
+辨識上市（TWSE）／上櫃（TPEx）
+        ↓
+確認股票名稱後才可送出 Webhook
+
+這樣設計是為了避免 GitHub Pages 瀏覽器直接呼叫行情來源時，
+受到 CORS 跨網域限制。
+
+你需要設定兩個網址：
+
+1. WEBHOOK_URL
+   → 你的 Make / GAS / n8n 接收下單資料網址
+
+2. STOCK_LOOKUP_URL
+   → 下方 Code.gs 部署成 Web App 後取得的網址
+
+
+=========================================================
+A. GitHub Pages：index.html
+=========================================================
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#109db0" />
+  <title>台股下單</title>
+
+  <style>
+    :root{
+      --primary:#13a6b8;
+      --primary-dark:#0a8f9f;
+      --bg:#f4f6f7;
+      --card:#ffffff;
+      --text:#4c5053;
+      --muted:#969da1;
+      --line:#e6eaec;
+      --danger:#d9534f;
+      --success:#159a7d;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background:#edf1f2;
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",
+        "PingFang TC","Microsoft JhengHei",sans-serif;
+    }
+    .app{
+      width:min(100%,760px);
+      min-height:100vh;
+      margin:auto;
+      background:#fff;
+      padding-bottom:115px;
+    }
+    button{font-family:inherit}
+    .top-tabs,.trade-tabs,.segmented,.three-tabs{
+      display:grid;
+      gap:1px;
+      background:#dce3e5;
+    }
+    .top-tabs{
+      grid-template-columns:1fr 1fr;
+      padding:10px 12px 0;
+      background:#087c84;
+    }
+    .trade-tabs{
+      grid-template-columns:1fr 1fr;
+      background:#07898f;
+    }
+    .top-tabs button,.trade-tabs button,.segmented button,.three-tabs button{
+      border:0;
+      padding:16px 8px;
+      background:#fff;
+      color:#909699;
+      font-size:20px;
+      cursor:pointer;
+    }
+    .top-tabs button:first-child{border-radius:10px 0 0 10px}
+    .top-tabs button:last-child{border-radius:0 10px 10px 0}
+    .top-tabs .active,.trade-tabs .active,.segmented .active,.three-tabs .active{
+      background:var(--primary);
+      color:#fff;
+      font-weight:700;
+    }
+    .trade-tabs button{
+      background:#07898f;
+      color:#86ccd1;
+      font-size:23px;
+    }
+    .trade-tabs button.active{
+      background:#07898f;
+      color:#fff;
+    }
+    .search-wrap,.section{
+      margin:14px;
+      padding:14px;
+      border-radius:12px;
+      background:#f7f8f8;
+    }
+    .search{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      background:#fff;
+      border-radius:12px;
+      padding:12px 14px;
+      border:1px solid #edf0f1;
+    }
+    .search input{
+      width:100%;
+      border:0;
+      outline:0;
+      font-size:18px;
+      background:transparent;
+    }
+    .lookup-btn{
+      border:0;
+      border-radius:9px;
+      padding:10px 13px;
+      background:var(--primary);
+      color:#fff;
+      font-weight:800;
+      white-space:nowrap;
+      cursor:pointer;
+    }
+    .stock-card{
+      display:none;
+      margin-top:10px;
+      padding:13px;
+      border-radius:10px;
+      background:#fff;
+      border:1px solid var(--line);
+    }
+    .stock-card.ok{
+      display:block;
+      border-color:#b9e6da;
+      background:#f5fffb;
+    }
+    .stock-card.error{
+      display:block;
+      border-color:#f1c4c2;
+      background:#fff8f8;
+    }
+    .stock-title{
+      display:flex;
+      align-items:center;
+      gap:9px;
+      flex-wrap:wrap;
+    }
+    .stock-title strong{font-size:20px}
+    .badge{
+      display:inline-block;
+      border-radius:999px;
+      padding:4px 9px;
+      background:#e9f9fb;
+      color:var(--primary-dark);
+      font-size:13px;
+      font-weight:800;
+    }
+    .stock-info{
+      margin-top:7px;
+      font-size:14px;
+      color:#70777b;
+      line-height:1.8;
+    }
+    .lookup-status{
+      margin-top:8px;
+      font-size:14px;
+      color:#777;
+    }
+    .segmented{
+      grid-template-columns:1fr 1fr;
+      margin-bottom:10px;
+    }
+    .three-tabs{
+      grid-template-columns:1fr 1fr 1fr;
+      margin-bottom:10px;
+    }
+    .segmented button,.three-tabs button{
+      font-size:18px;
+      border-radius:8px;
+    }
+    button:disabled{
+      background:#d2d2d2!important;
+      color:#999!important;
+      cursor:not-allowed;
+    }
+    .label{
+      font-size:16px;
+      color:#7c8286;
+      margin:12px 0 8px;
+    }
+    .stepper{
+      display:grid;
+      grid-template-columns:54px 1fr 54px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .stepper button{
+      border:0;
+      background:#c8f0f5;
+      color:var(--primary);
+      font-size:30px;
+      cursor:pointer;
+    }
+    .stepper input{
+      border:0;
+      outline:0;
+      text-align:center;
+      font-size:22px;
+      width:100%;
+      padding:12px;
+    }
+    .grid2{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+    .summary{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:12px;
+      font-size:15px;
+      line-height:2;
+    }
+    .summary b{
+      float:right;
+      color:#222;
+    }
+    .submit-bar{
+      position:fixed;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:0;
+      width:min(100%,760px);
+      padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+      background:rgba(255,255,255,.97);
+      border-top:1px solid #eceff0;
+    }
+    .submit{
+      width:100%;
+      border:0;
+      border-radius:10px;
+      padding:15px;
+      background:var(--primary);
+      color:#fff;
+      font-size:20px;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .submit:disabled{
+      background:#aaa!important;
+      color:#fff!important;
+    }
+    .msg{
+      margin-top:8px;
+      text-align:center;
+      font-size:14px;
+    }
+    .msg.ok{color:var(--success)}
+    .msg.err{color:var(--danger)}
+    @media(max-width:480px){
+      .top-tabs button,.trade-tabs button{font-size:18px}
+      .section,.search-wrap{margin:10px}
+      .grid2{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+
+<body>
+<main class="app">
+
+  <div class="top-tabs">
+    <button class="active" data-market="整股">整股</button>
+    <button data-market="零股">零股</button>
+  </div>
+
+  <div class="trade-tabs">
+    <button class="active" data-side="買進">買進</button>
+    <button data-side="賣出">賣出</button>
+  </div>
+
+  <section class="search-wrap">
+    <div class="search">
+      <span style="font-size:28px">⌕</span>
+      <input
+        id="stockInput"
+        inputmode="numeric"
+        maxlength="8"
+        placeholder="輸入台股代碼，例如 2330"
+        autocomplete="off"
+      >
+      <button class="lookup-btn" id="lookupBtn" type="button">查詢</button>
+    </div>
+
+    <div class="lookup-status" id="lookupStatus">
+      輸入代碼後會向台灣股市資料查詢，確認股票名稱及上市／上櫃市場。
+    </div>
+
+    <div class="stock-card" id="stockCard">
+      <div class="stock-title">
+        <strong id="stockName">—</strong>
+        <span class="badge" id="stockMarket">—</span>
+      </div>
+      <div class="stock-info">
+        股票代碼：<span id="stockCode">—</span><br>
+        公司全名：<span id="stockFullName">—</span><br>
+        最近成交價：<span id="lastPrice">—</span><br>
+        昨收：<span id="yesterdayPrice">—</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="segmented">
+      <button class="active" data-session="整股">整股</button>
+      <button data-session="盤後">盤後</button>
+    </div>
+
+    <div class="three-tabs">
+      <button class="active" data-account="現股">現股</button>
+      <button data-account="融資" disabled>融資</button>
+      <button data-account="融券" disabled>融券</button>
+    </div>
+
+    <div class="three-tabs">
+      <button class="active" data-tif="ROD">ROD</button>
+      <button data-tif="IOC">IOC</button>
+      <button data-tif="FOK">FOK</button>
+    </div>
+  </section>
+
+  <section class="section">
+
+    <div class="label">單位</div>
+    <div class="stepper">
+      <button type="button" onclick="stepValue('qty',-1)">−</button>
+      <input id="qty" type="number" min="1" step="1" value="1">
+      <button type="button" onclick="stepValue('qty',1)">＋</button>
+    </div>
+
+    <div class="label">價位</div>
+
+    <div class="segmented">
+      <button class="active" data-price-type="限價">限價</button>
+      <button data-price-type="市價">市價</button>
+    </div>
+
+    <div class="stepper" id="priceStepper">
+      <button type="button" onclick="stepValue('price',-0.1)">−</button>
+      <input id="price" type="number" min="0" step="0.1" placeholder="輸入委託價格">
+      <button type="button" onclick="stepValue('price',0.1)">＋</button>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="grid2">
+      <div class="summary">
+        股票 <b id="sStock">—</b><br>
+        市場 <b id="sExchange">—</b><br>
+        買賣別 <b id="sSide">買進</b><br>
+        類型 <b id="sMarket">整股</b>
+      </div>
+
+      <div class="summary">
+        數量 <b id="sQty">1 張</b><br>
+        價格類型 <b id="sPriceType">限價</b><br>
+        委託價格 <b id="sPrice">—</b><br>
+        預估金額 <b id="sAmount">—</b>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="submit-bar">
+  <button class="submit" id="submitBtn" type="button" disabled>
+    請先查詢有效股票代碼
+  </button>
+  <div class="msg" id="msg"></div>
+</div>
+
+<script>
+/* =====================================================
+   ① 改成你的 Make / GAS / n8n Webhook
+===================================================== */
+const WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE";
+
+/* =====================================================
+   ② 改成下面提供的 Google Apps Script Web App 網址
+   這個 GAS 負責查詢台灣證交所 MIS，
+   可辨識上市 tse / 上櫃 otc。
+===================================================== */
+const STOCK_LOOKUP_URL = "YOUR_STOCK_LOOKUP_GAS_URL_HERE";
+
+
+const state = {
+  market: "整股",
+  side: "買進",
+  session: "整股",
+  account: "現股",
+  tif: "ROD",
+  priceType: "限價",
+
+  stockValidated: false,
+  stock: null
+};
+
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+
+/* ---------- Tab 共用 ---------- */
+
+function activate(selector, clicked){
+  $$(selector).forEach(btn => btn.classList.remove("active"));
+  clicked.classList.add("active");
+}
+
+
+$$("[data-market]").forEach(btn => {
+  btn.onclick = () => {
+    activate("[data-market]", btn);
+
+    state.market = btn.dataset.market;
+
+    /*
+      上方若改成零股，
+      下方交易時段同步改成零股。
+    */
+    if(state.market === "零股"){
+      state.session = "零股";
+      $$("[data-session]").forEach(x => x.classList.remove("active"));
+    }else{
+      state.session = "整股";
+      $$("[data-session]").forEach(x => {
+        x.classList.toggle("active", x.dataset.session === "整股");
+      });
+    }
+
+    updateSummary();
+  };
+});
+
+
+$$("[data-side]").forEach(btn => {
+  btn.onclick = () => {
+    activate("[data-side]", btn);
+    state.side = btn.dataset.side;
+    updateSummary();
+  };
+});
+
+
+$$("[data-session]").forEach(btn => {
+  btn.onclick = () => {
+    activate("[data-session]", btn);
+    state.session = btn.dataset.session;
+  };
+});
+
+
+$$("[data-account]").forEach(btn => {
+  btn.onclick = () => {
+    if(btn.disabled) return;
+    activate("[data-account]", btn);
+    state.account = btn.dataset.account;
+  };
+});
+
+
+$$("[data-tif]").forEach(btn => {
+  btn.onclick = () => {
+    activate("[data-tif]", btn);
+    state.tif = btn.dataset.tif;
+  };
+});
+
+
+$$("[data-price-type]").forEach(btn => {
+  btn.onclick = () => {
+    activate("[data-price-type]", btn);
+
+    state.priceType = btn.dataset.priceType;
+
+    const marketPrice = state.priceType === "市價";
+
+    $("#price").disabled = marketPrice;
+    $("#priceStepper").style.opacity = marketPrice ? ".45" : "1";
+
+    updateSummary();
+  };
+});
+
+
+/* ---------- 股票查詢 ---------- */
+
+function normalizeStockCode(value){
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
+}
+
+
+function clearValidatedStock(){
+  state.stockValidated = false;
+  state.stock = null;
+
+  $("#stockCard").className = "stock-card";
+  $("#stockName").textContent = "—";
+  $("#stockMarket").textContent = "—";
+  $("#stockCode").textContent = "—";
+  $("#stockFullName").textContent = "—";
+  $("#lastPrice").textContent = "—";
+  $("#yesterdayPrice").textContent = "—";
+
+  updateSubmitButton();
+  updateSummary();
+}
+
+
+$("#stockInput").addEventListener("input", () => {
+  clearValidatedStock();
+  $("#lookupStatus").textContent = "代碼已變更，請重新查詢確認。";
+});
+
+
+$("#stockInput").addEventListener("keydown", e => {
+  if(e.key === "Enter"){
+    lookupStock();
+  }
+});
+
+
+$("#lookupBtn").addEventListener("click", lookupStock);
+
+
+async function lookupStock(){
+
+  const code = normalizeStockCode($("#stockInput").value);
+
+  clearValidatedStock();
+
+  if(!code){
+    showLookupError("請輸入股票代碼");
+    return;
+  }
+
+  /*
+    台股代碼除了一般 4 碼，
+    ETF / 主動ETF 等也可能包含英文字母，
+    因此不只限制純 4 碼。
+  */
+  if(!/^[0-9A-Z]{4,8}$/.test(code)){
+    showLookupError("股票代碼格式不正確");
+    return;
+  }
+
+  if(
+    !STOCK_LOOKUP_URL ||
+    STOCK_LOOKUP_URL.includes("YOUR_STOCK_LOOKUP")
+  ){
+    showLookupError("請先在程式設定 STOCK_LOOKUP_URL");
+    return;
+  }
+
+  $("#lookupBtn").disabled = true;
+  $("#lookupBtn").textContent = "查詢中…";
+  $("#lookupStatus").textContent = "正在確認台灣股市代碼…";
+
+  try{
+
+    const url =
+      STOCK_LOOKUP_URL +
+      "?code=" +
+      encodeURIComponent(code) +
+      "&t=" +
+      Date.now();
+
+    const response = await fetch(url, {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    if(!response.ok){
+      throw new Error("HTTP " + response.status);
+    }
+
+    const data = await response.json();
+
+    if(!data.ok || !data.stock){
+      showLookupError(
+        data.message || "找不到此上市／上櫃股票代碼"
+      );
+      return;
+    }
+
+    state.stockValidated = true;
+    state.stock = data.stock;
+
+    $("#stockCard").className = "stock-card ok";
+
+    $("#stockName").textContent =
+      data.stock.name || data.stock.code;
+
+    $("#stockMarket").textContent =
+      data.stock.marketName || data.stock.exchange;
+
+    $("#stockCode").textContent =
+      data.stock.code || code;
+
+    $("#stockFullName").textContent =
+      data.stock.fullName || data.stock.name || "—";
+
+    $("#lastPrice").textContent =
+      formatPrice(data.stock.lastPrice);
+
+    $("#yesterdayPrice").textContent =
+      formatPrice(data.stock.previousClose);
+
+    $("#lookupStatus").textContent =
+      "✓ 已確認為有效台灣股市代碼";
+
+    /*
+      限價欄位若目前沒有輸入，
+      可以把目前成交價帶入當作參考。
+    */
+    if(
+      state.priceType === "限價" &&
+      !$("#price").value &&
+      Number(data.stock.lastPrice) > 0
+    ){
+      $("#price").value = data.stock.lastPrice;
+    }
+
+    updateSubmitButton();
+    updateSummary();
+
+  }catch(err){
+
+    console.error(err);
+
+    showLookupError(
+      "股票查詢失敗。請確認 GAS Web App 已部署並允許存取。"
+    );
+
+  }finally{
+
+    $("#lookupBtn").disabled = false;
+    $("#lookupBtn").textContent = "查詢";
+
+  }
+}
+
+
+function showLookupError(message){
+
+  state.stockValidated = false;
+  state.stock = null;
+
+  $("#stockCard").className = "stock-card error";
+  $("#stockName").textContent = "查無資料";
+  $("#stockMarket").textContent = "未確認";
+  $("#stockCode").textContent =
+    normalizeStockCode($("#stockInput").value) || "—";
+
+  $("#stockFullName").textContent = "—";
+  $("#lastPrice").textContent = "—";
+  $("#yesterdayPrice").textContent = "—";
+
+  $("#lookupStatus").textContent = message;
+
+  updateSubmitButton();
+  updateSummary();
+}
+
+
+function formatPrice(value){
+
+  const num = Number(value);
+
+  if(!Number.isFinite(num) || num <= 0){
+    return "—";
+  }
+
+  return num.toLocaleString("zh-TW", {
+    maximumFractionDigits: 4
+  });
+}
+
+
+/* ---------- 數量 / 價格 ---------- */
+
+function stepValue(id, delta){
+
+  const el = document.getElementById(id);
+
+  let val = Number(el.value || 0) + delta;
+
+  if(id === "qty"){
+    val = Math.max(1, Math.round(val));
+  }
+
+  if(id === "price"){
+    val = Math.max(
+      0,
+      Math.round(val * 100) / 100
+    );
+  }
+
+  el.value = val;
+
+  updateSummary();
+}
+
+
+$("#qty").addEventListener("input", updateSummary);
+$("#price").addEventListener("input", updateSummary);
+
+
+/* ---------- 訂單摘要 ---------- */
+
+function updateSummary(){
+
+  const qty = Number($("#qty").value || 0);
+
+  const price =
+    state.priceType === "市價"
+      ? null
+      : Number($("#price").value || 0);
+
+  /*
+    整股：輸入 1 代表 1 張 = 1000 股
+    零股：輸入 1 代表 1 股
+  */
+  const shares =
+    state.market === "整股"
+      ? qty * 1000
+      : qty;
+
+  const amount =
+    price && shares
+      ? Math.round(price * shares)
+      : null;
+
+  $("#sStock").textContent =
+    state.stockValidated && state.stock
+      ? `${state.stock.code} ${state.stock.name}`
+      : "—";
+
+  $("#sExchange").textContent =
+    state.stockValidated && state.stock
+      ? state.stock.marketName
+      : "—";
+
+  $("#sSide").textContent = state.side;
+  $("#sMarket").textContent = state.market;
+
+  $("#sQty").textContent =
+    qty +
+    (state.market === "整股" ? " 張" : " 股");
+
+  $("#sPriceType").textContent =
+    state.priceType;
+
+  $("#sPrice").textContent =
+    state.priceType === "市價"
+      ? "市價"
+      : price > 0
+        ? price.toLocaleString("zh-TW")
+        : "—";
+
+  $("#sAmount").textContent =
+    amount
+      ? "NT$ " + amount.toLocaleString("zh-TW")
+      : "—";
+
+  updateSubmitButton();
+}
+
+
+function updateSubmitButton(){
+
+  const btn = $("#submitBtn");
+
+  if(!state.stockValidated){
+    btn.disabled = true;
+    btn.textContent = "請先查詢有效股票代碼";
+    return;
+  }
+
+  btn.disabled = false;
+  btn.textContent = "送出委託";
+}
+
+
+/* ---------- JSON ---------- */
+
+function buildPayload(){
+
+  const qty = Number($("#qty").value || 0);
+
+  const price =
+    state.priceType === "市價"
+      ? null
+      : Number($("#price").value || 0);
+
+  const shares =
+    state.market === "整股"
+      ? qty * 1000
+      : qty;
+
+  return {
+    event: "stock_order",
+
+    timestamp: new Date().toISOString(),
+
+    order: {
+      stockCode: state.stock.code,
+      stockName: state.stock.name,
+      stockFullName: state.stock.fullName,
+
+      exchange: state.stock.exchange,
+      marketName: state.stock.marketName,
+
+      side: state.side,
+
+      market: state.market,
+      session: state.session,
+
+      accountType: state.account,
+
+      timeInForce: state.tif,
+
+      priceType: state.priceType,
+
+      quantity: qty,
+
+      quantityUnit:
+        state.market === "整股"
+          ? "張"
+          : "股",
+
+      shares: shares,
+
+      price: price,
+
+      estimatedAmount:
+        price
+          ? Math.round(price * shares)
+          : null
+    },
+
+    marketSnapshot: {
+      lastPrice: state.stock.lastPrice,
+      previousClose: state.stock.previousClose,
+      quoteDate: state.stock.quoteDate,
+      quoteTime: state.stock.quoteTime
+    },
+
+    source: {
+      app: "github-pages-tw-stock-order",
+      userAgent: navigator.userAgent
+    }
+  };
+}
+
+
+function validate(payload){
+
+  if(!state.stockValidated){
+    return "股票代碼尚未通過確認";
+  }
+
+  if(
+    !payload.order.quantity ||
+    payload.order.quantity <= 0
+  ){
+    return "請輸入正確數量";
+  }
+
+  if(
+    payload.order.priceType === "限價" &&
+    (
+      !payload.order.price ||
+      payload.order.price <= 0
+    )
+  ){
+    return "請輸入限價價格";
+  }
+
+  if(
+    !WEBHOOK_URL ||
+    WEBHOOK_URL.includes("YOUR_WEBHOOK")
+  ){
+    return "請先設定 WEBHOOK_URL";
+  }
+
+  return "";
+}
+
+
+/* ---------- 送出 Webhook ---------- */
+
+$("#submitBtn").onclick = async () => {
+
+  const btn = $("#submitBtn");
+  const msg = $("#msg");
+
+  const payload = buildPayload();
+
+  const error = validate(payload);
+
+  msg.className = "msg";
+
+  if(error){
+    msg.textContent = error;
+    msg.classList.add("err");
+    return;
+  }
+
+  const confirmText =
+    `${payload.order.side} ` +
+    `${payload.order.stockCode} ${payload.order.stockName}\n` +
+    `${payload.order.quantity} ${payload.order.quantityUnit}\n` +
+    `價格：${payload.order.priceType === "市價" ? "市價" : payload.order.price}`;
+
+  if(!confirm(confirmText)){
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "傳送中…";
+  msg.textContent = "";
+
+  try{
+
+    const response = await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type":"application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if(!response.ok){
+      throw new Error("HTTP " + response.status);
+    }
+
+    msg.textContent = "✓ 委託資料已傳送";
+    msg.classList.add("ok");
+
+  }catch(err){
+
+    console.error(err);
+
+    msg.textContent =
+      "傳送失敗：" + err.message;
+
+    msg.classList.add("err");
+
+  }finally{
+
+    updateSubmitButton();
+
+  }
+};
+
+
+updateSummary();
+
+</script>
+</body>
+</html>
+
+
+
+=========================================================
+B. Google Apps Script：Code.gs
+=========================================================
+
+/**
+ * =====================================================
+ * 台股代碼查詢 API
+ * Google Apps Script / Code.gs
+ *
+ * 功能：
+ * 1. 接收 ?code=2330
+ * 2. 同時查詢 TWSE MIS：
+ *      tse_2330.tw  上市
+ *      otc_2330.tw  上櫃
+ * 3. 找到後輸出 JSON
+ * 4. GitHub Pages 前端可呼叫此 Web App
+ * =====================================================
+ */
+
+function doGet(e) {
+
+  try {
+
+    const code =
+      String(
+        (e && e.parameter && e.parameter.code) || ''
+      )
+      .trim()
+      .toUpperCase();
+
+    if (!code) {
+      return jsonOutput_({
+        ok: false,
+        message: '缺少股票代碼'
+      });
+    }
+
+    if (!/^[0-9A-Z]{4,8}$/.test(code)) {
+      return jsonOutput_({
+        ok: false,
+        message: '股票代碼格式不正確'
+      });
+    }
+
+    const stock = lookupTwStock_(code);
+
+    if (!stock) {
+      return jsonOutput_({
+        ok: false,
+        message: '找不到此上市／上櫃股票代碼'
+      });
+    }
+
+    return jsonOutput_({
+      ok: true,
+      stock: stock
+    });
+
+  } catch (err) {
+
+    return jsonOutput_({
+      ok: false,
+      message: String(err && err.message ? err.message : err)
+    });
+
+  }
+}
+
+
+/**
+ * 查詢 TWSE MIS
+ *
+ * 官方行情格式：
+ * tse_2330.tw = 上市
+ * otc_6488.tw = 上櫃
+ *
+ * 一次同時送兩個候選，
+ * 回傳後再找真正存在的標的。
+ */
+function lookupTwStock_(code) {
+
+  const channels = [
+    'tse_' + code + '.tw',
+    'otc_' + code + '.tw'
+  ];
+
+  const url =
+    'https://mis.twse.com.tw/stock/api/getStockInfo.jsp' +
+    '?ex_ch=' +
+    encodeURIComponent(channels.join('|')) +
+    '&json=1' +
+    '&delay=0' +
+    '&_=' +
+    Date.now();
+
+  const response = UrlFetchApp.fetch(url, {
+    method: 'get',
+    muteHttpExceptions: true,
+    followRedirects: true,
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (compatible; GoogleAppsScript)',
+      'Referer':
+        'https://mis.twse.com.tw/stock/fibest.jsp'
+    }
+  });
+
+  const httpCode = response.getResponseCode();
+
+  if (httpCode < 200 || httpCode >= 300) {
+    throw new Error(
+      'TWSE 查詢失敗，HTTP ' + httpCode
+    );
+  }
+
+  const text = response.getContentText('UTF-8');
+
+  const data = JSON.parse(text);
+
+  const list =
+    Array.isArray(data.msgArray)
+      ? data.msgArray
+      : [];
+
+  /*
+   * API 可能回傳空物件或非該股票資料，
+   * 所以需再確認 c 欄等於使用者輸入代碼。
+   */
+  const item = list.find(x => {
+    return (
+      x &&
+      String(x.c || '').toUpperCase() === code &&
+      (
+        String(x.ex || '') === 'tse' ||
+        String(x.ex || '') === 'otc'
+      )
+    );
+  });
+
+  if (!item) {
+    return null;
+  }
+
+  const exchange =
+    item.ex === 'tse'
+      ? 'TWSE'
+      : 'TPEx';
+
+  const marketName =
+    item.ex === 'tse'
+      ? '上市'
+      : '上櫃';
+
+  return {
+    code: String(item.c || code),
+
+    name:
+      String(item.n || '').trim(),
+
+    fullName:
+      String(item.nf || item.n || '').trim(),
+
+    exchange: exchange,
+
+    marketName: marketName,
+
+    /*
+     * z = 最近成交價
+     * 若盤中沒有成交，有時會是 "-"
+     */
+    lastPrice:
+      cleanNumber_(item.z),
+
+    /*
+     * y = 昨日收盤價
+     */
+    previousClose:
+      cleanNumber_(item.y),
+
+    open:
+      cleanNumber_(item.o),
+
+    high:
+      cleanNumber_(item.h),
+
+    low:
+      cleanNumber_(item.l),
+
+    limitUp:
+      cleanNumber_(item.u),
+
+    limitDown:
+      cleanNumber_(item.w),
+
+    volume:
+      cleanNumber_(item.v),
+
+    quoteDate:
+      String(item.d || ''),
+
+    quoteTime:
+      String(item.t || ''),
+
+    rawExchange:
+      String(item.ex || '')
+  };
+}
+
+
+/**
+ * 將 "-", 空白等轉成 null。
+ */
+function cleanNumber_(value) {
+
+  if (
+    value === null ||
+    value === undefined ||
+    value === '' ||
+    value === '-'
+  ) {
+    return null;
+  }
+
+  const n = Number(value);
+
+  return Number.isFinite(n)
+    ? n
+    : null;
+}
+
+
+/**
+ * JSON Response
+ */
+function jsonOutput_(obj) {
+
+  return ContentService
+    .createTextOutput(
+      JSON.stringify(obj)
+    )
+    .setMimeType(
+      ContentService.MimeType.JSON
+    );
+}
+
+
+/**
+ * 可手動執行測試。
+ */
+function testLookup2330() {
+
+  const result =
+    lookupTwStock_('2330');
+
+  Logger.log(
+    JSON.stringify(
+      result,
+      null,
+      2
+    )
+  );
+}
+
+
+/**
+ * 可手動執行測試上櫃股票。
+ * 若該代碼當下存在於上櫃市場，
+ * 應回傳 marketName = 上櫃。
+ */
+function testLookupOTC() {
+
+  const result =
+    lookupTwStock_('6488');
+
+  Logger.log(
+    JSON.stringify(
+      result,
+      null,
+      2
+    )
+  );
+}
+
+
+
+=========================================================
+部署方式
+=========================================================
+
+【GAS 股票查詢 API】
+
+1. 建立新的 Google Apps Script。
+2. 將 B 區 Code.gs 全部貼上。
+3. 部署 → 新增部署作業 → 網頁應用程式。
+4. 執行身分：我。
+5. 誰可以存取：任何人。
+6. 複製 Web App 網址。
+7. 回到 index.html，找到：
+
+const STOCK_LOOKUP_URL = "YOUR_STOCK_LOOKUP_GAS_URL_HERE";
+
+改成你的 GAS 網址。
+
+
+【GitHub】
+
+將 A 區內容另存成 index.html，上傳 GitHub Pages。
+
+然後修改：
+
+const WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE";
+
+改成你的 Make / GAS / n8n Webhook。
+
+
+=========================================================
+Webhook JSON 範例
+=========================================================
+
+輸入：
+2330
+
+查詢成功：
+台積電
+上市 / TWSE
+
+若：
+整股
+買進
+1 張
+限價 1000 元
+
+送出內容大致為：
+
+{
+  "event": "stock_order",
+  "timestamp": "2026-10-06T13:00:00.000Z",
+  "order": {
+    "stockCode": "2330",
+    "stockName": "台積電",
+    "stockFullName": "台灣積體電路製造股份有限公司",
+    "exchange": "TWSE",
+    "marketName": "上市",
+    "side": "買進",
+    "market": "整股",
+    "session": "整股",
+    "accountType": "現股",
+    "timeInForce": "ROD",
+    "priceType": "限價",
+    "quantity": 1,
+    "quantityUnit": "張",
+    "shares": 1000,
+    "price": 1000,
+    "estimatedAmount": 1000000
+  },
+  "marketSnapshot": {
+    "lastPrice": 1000,
+    "previousClose": 995,
+    "quoteDate": "20261006",
+    "quoteTime": "13:30:00"
+  },
+  "source": {
+    "app": "github-pages-tw-stock-order"
+  }
+}
+
+=========================================================
