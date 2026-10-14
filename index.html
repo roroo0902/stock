@@ -378,6 +378,30 @@
       display:none!important;
     }
 
+
+    .page-nav{display:grid;grid-template-columns:1fr 1fr;background:#087c84;padding:12px;gap:8px}
+    .page-nav button{border:1px solid #a1d5d8;border-radius:10px;background:#087c84;color:#e9fdff;font-size:17px;padding:12px;cursor:pointer}
+    .page-nav button.active{background:white;color:#087c84;font-weight:800}
+    .orders-panel{padding:14px;min-height:50vh}
+    .orders-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .orders-head h2{margin:2px 0 5px;font-size:23px}
+    .orders-muted{font-size:13px;color:#7b8388;line-height:1.65}
+    .reload-orders{border:1px solid #9ddfe3;background:#ebfafc;border-radius:9px;padding:10px 12px;color:#087c84;font-weight:700;cursor:pointer}
+    .order-card{margin:12px 0;border:1px solid #e1e8eb;border-radius:12px;padding:13px;background:#fff}
+    .order-card-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+    .order-card-header strong{font-size:19px}
+    .order-pill{display:inline-block;border-radius:20px;padding:5px 9px;background:#e8f5fa;color:#116f85;font-size:12px;font-weight:700}
+    .order-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:10px 0}
+    .order-field small{display:block;color:#828b8f;font-size:12px;margin-bottom:4px}
+    .order-field span{font-size:15px;font-weight:700;overflow-wrap:anywhere}
+    .order-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #eef0f2;padding-top:10px;flex-wrap:wrap}
+    .order-footer button{border:1px solid #d9a3a1;background:#fff7f7;color:#ac3737;padding:9px 12px;border-radius:8px;font-weight:700;cursor:pointer}
+    .order-footer button:disabled{opacity:.45;cursor:not-allowed}
+    .order-success{color:#11855a;font-weight:700}.order-pending{color:#a36d0d;font-weight:700}
+    .orders-error{color:#a63030;padding:15px;border:1px solid #f0cece;border-radius:10px;background:#fff8f8;white-space:pre-wrap}
+    .orders-empty{text-align:center;color:#788288;padding:45px 12px}
+    [hidden]{display:none!important}
+
     @media(max-width:600px){
       .trade-tabs button{font-size:15px}
       .section,.search-wrap{margin:10px}
@@ -389,6 +413,11 @@
 
 <body>
 <main class="app">
+  <nav class="page-nav" aria-label="頁面切換">
+    <button type="button" id="navTrade" class="active">股票下單</button>
+    <button type="button" id="navOrders">今日下單紀錄</button>
+  </nav>
+  <div id="tradePage">
 
   <!-- 股票 / ETF 才顯示 -->
   <div id="orderHeader">
@@ -764,7 +793,16 @@
     </section>
 
   </div>
-
+  </div><!-- /tradePage -->
+  <section id="ordersPage" class="orders-panel" hidden>
+    <div class="orders-head"><div><h2>今日下單紀錄</h2>
+      <div class="orders-muted" id="ordersDate">台灣時間</div></div>
+      <button class="reload-orders" id="reloadOrders" type="button">重新整理</button>
+    </div>
+    <p class="orders-muted">以下為委託需求紀錄，AD 欄由人工核取。未勾選不代表委託一定失敗。</p>
+    <div id="ordersMessage" class="orders-muted">尚未載入資料</div>
+    <div id="ordersList"></div>
+  </section>
 </main>
 
 
@@ -802,7 +840,7 @@ const WEBHOOK_URL =
 ===================================================== */
 
 const STOCK_LOOKUP_URL =
-  "https://script.google.com/macros/s/AKfycbwIechPc5YjMOg6SUGnUptIBqJwB2NrS8zdXBwBf8XWGptdC6X2At8wzFfce3SX_4ewxg/exec";
+  "https://script.google.com/macros/s/AKfycbxvsYNCrUT20ZJd3GzykIzovmt4tpnLL1uVa8oC9fjyYpUrpeIudGw4O-7TtfjzUZfR-Q/exec";
 
 
 /* =====================================================
@@ -2507,7 +2545,10 @@ function buildPayload(){
               price *
               shares
             )
-          : null
+          : null,
+
+      // Make Webhook: order.originalOrderId
+      originalOrderId: isCancel ? selectedOriginalOrderId : ""
     },
 
     marketSnapshot: {
@@ -2794,6 +2835,234 @@ $("#submitBtn").onclick =
 
 
 updateSummary();
+
+/* =====================================================
+   今日下單紀錄：GAS GET ?action=todayOrders
+   注意：GAS 必須新增對應的 doGet 分支，且讀取權限
+   應由後端驗證，不要將密鑰寫在公開 GitHub。
+===================================================== */
+// 保存使用者從今日下單紀錄選擇的「原始訂單編號」
+// 一般買進／賣出為空；取消時才會填入原始 B 欄 UUID。
+let selectedOriginalOrderId = "";
+
+let todayOrders = [];
+let todayRefreshTimer = null;
+const ORDER_LIST_REFRESH_MS = 30000;
+let activePage = "trade";
+
+function showPage(page) {
+  activePage = page;
+  const isOrders = page === "orders";
+  document.getElementById("tradePage").hidden = isOrders;
+  document.getElementById("ordersPage").hidden = !isOrders;
+  document.getElementById("navTrade").classList.toggle("active", !isOrders);
+  document.getElementById("navOrders").classList.toggle("active", isOrders);
+  document.getElementById("submitBar").hidden = isOrders || !!(state.stock && state.stock.isIndex);
+  if (isOrders) {
+    location.hash = "today-orders";
+    refreshTodayOrders();
+    if (todayRefreshTimer) clearInterval(todayRefreshTimer);
+    todayRefreshTimer = setInterval(() => {
+      if (!document.hidden) refreshTodayOrders();
+    }, ORDER_LIST_REFRESH_MS);
+  } else {
+    location.hash = "trade";
+    if (todayRefreshTimer) clearInterval(todayRefreshTimer);
+    todayRefreshTimer = null;
+    setIndexMode(!!(state.stock && state.stock.isIndex));
+  }
+  window.scrollTo(0, 0);
+}
+
+document.getElementById("navTrade").onclick = () => showPage("trade");
+document.getElementById("navOrders").onclick = () => showPage("orders");
+document.getElementById("reloadOrders").onclick = () => refreshTodayOrders();
+window.addEventListener("hashchange", () => {
+  const target = location.hash === "#today-orders" ? "orders" : "trade";
+  if (target !== activePage) showPage(target);
+});
+
+function formatNumber(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toLocaleString("zh-TW", {maximumFractionDigits:4}) : String(value);
+}
+function safeNode(tag, textValue, cls) {
+  const el = document.createElement(tag);
+  if (cls) el.className = cls;
+  el.textContent = String(textValue ?? "—");
+  return el;
+}
+function asTrue(value) { return value === true || value === "TRUE"; }
+
+async function refreshTodayOrders() {
+  const msg = document.getElementById("ordersMessage");
+  const list = document.getElementById("ordersList");
+  msg.textContent = "讀取今日下單紀錄中…";
+  try {
+    const url = STOCK_LOOKUP_URL + "?action=todayOrders&t=" + Date.now();
+    const response = await fetch(url, {cache:"no-store"});
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    const data = await response.json();
+    if (!data.ok || !Array.isArray(data.orders)) {
+      throw new Error(data.message || "GAS 尚未提供今日訂單查詢 API");
+    }
+    todayOrders = data.orders;
+    document.getElementById("ordersDate").textContent =
+      (data.date || new Date().toLocaleDateString("zh-TW", {timeZone:"Asia/Taipei"})) + " · " + todayOrders.length + " 筆";
+    renderTodayOrders();
+    msg.textContent = todayOrders.length ? "每 30 秒自動更新一次" : "今天尚無下單紀錄";
+  } catch (err) {
+    list.replaceChildren();
+    msg.textContent = "讀取失敗：" + err.message + "。請確認 GAS 已加入 todayOrders 查詢功能且已重新部署。";
+    msg.className = "orders-error";
+  }
+}
+
+function renderTodayOrders() {
+  const list = document.getElementById("ordersList");
+  const msg = document.getElementById("ordersMessage");
+  msg.className = "orders-muted";
+  list.replaceChildren();
+  const canceledIds = new Set(todayOrders.filter(x=>String(x.action||"").startsWith("取消"))
+    .map(x=>String(x.originalOrderId||"")));
+  // 後端回傳之最新在前；再次以 row 作保險排序
+  const records = [...todayOrders].sort((a,b)=>(Number(b.row)||0)-(Number(a.row)||0));
+  const fields = [
+    ["下單時間","orderTime"],["操作類型","action"],
+    ["股票代碼","stockCode"],["股票名稱","stockName"],
+    ["交易單位","orderType"],["委託數量","quantity"],
+    ["數量單位","quantityUnit"],["總股數","shares"],
+    ["委託價格","price"],["預估交易金額","estimatedAmount"]
+  ];
+  records.forEach(order => {
+    const card = safeNode("article", "", "order-card");
+    const header = document.createElement("div");
+    header.className = "order-card-header";
+    header.append(safeNode("strong", (order.stockCode||"") + " " + (order.stockName||"")),
+      safeNode("span", order.action||"", "order-pill"));
+    card.appendChild(header);
+    const grid = document.createElement("div");
+    grid.className = "order-fields";
+    fields.forEach(([name,key]) => {
+      const cell = document.createElement("div"); cell.className="order-field";
+      let value = order[key];
+      if (["quantity","shares","price","estimatedAmount"].includes(key)) value=formatNumber(value);
+      if (key==="estimatedAmount" && value!=="—") value="NT$ " + value;
+      cell.append(safeNode("small",name),safeNode("span",value===null||value===""?"—":value));
+      grid.appendChild(cell);
+    });
+    card.appendChild(grid);
+    const footer = document.createElement("div");footer.className="order-footer";
+    footer.appendChild(safeNode("span", asTrue(order.confirmed)
+      ? (String(order.action).startsWith("取消")?"人工已確認取消成功":"人工已確認下單成功")
+      : "尚未人工確認成功", asTrue(order.confirmed)?"order-success":"order-pending"));
+    const canCancel = ["買進","賣出"].includes(order.action) && !asTrue(order.confirmed)
+      && !!order.orderId && !canceledIds.has(String(order.orderId));
+    if (canCancel) {
+      const cancel = safeNode("button",order.action==="買進"?"取消買進":"取消賣出");
+      cancel.type="button";
+      cancel.onclick=()=>submitCancelFromRecord(order);
+      footer.appendChild(cancel);
+    }
+    card.appendChild(footer);
+    list.appendChild(card);
+  });
+}
+
+async function postOrderPayload(payload) {
+  const response = await fetch(WEBHOOK_URL, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(payload)
+  });
+  if (!response.ok) throw new Error("Webhook HTTP " + response.status);
+  const raw = await response.text();
+  let data;
+  try { data=JSON.parse(raw); } catch { throw new Error("Make 尚未回傳 GAS 的 JSON 結果，無法確認是否已寫入"); }
+  if (data.ok !== true || !data.orderId) {
+    throw new Error(data.message || "GAS 未確認訂單寫入成功");
+  }
+  return data;
+}
+
+async function submitCancelFromRecord(record) {
+  const action = record.action === "買進" ? "取消買進" : "取消賣出";
+  if (!confirm("確定要提交取消申請？\n"+record.stockCode+" "+record.stockName+
+     "\n原始單號："+record.orderId+"\n此操作是申請取消，並非已完成取消。")) return;
+  // 使用目前選擇的原始訂單編號，供 GAS 比對 B 欄並寫入 AF 欄。
+  selectedOriginalOrderId = String(record.orderId || "").trim();
+  if (!selectedOriginalOrderId) {
+    alert("缺少原始訂單編號，無法取消。");
+    return;
+  }
+  const payload = {
+    event:"stock_order_cancel",timestamp:new Date().toISOString(),
+    order:{
+      action,side:action,originalOrderId:selectedOriginalOrderId,
+      stockCode:record.stockCode,stockName:record.stockName,
+      exchange:record.exchange||"",market:record.market||"",
+      marketName:record.marketName||"",assetType:record.assetType||"",
+      orderType:record.orderType,session:record.session||"整股",
+      accountType:record.accountType||"現股",timeInForce:record.timeInForce||"ROD",
+      priceType:record.priceType||"限價",quantity:Number(record.quantity),
+      quantityUnit:record.quantityUnit,shares:Number(record.shares),
+      price:record.price??null,estimatedAmount:record.estimatedAmount??null
+    },
+    marketSnapshot:{quoteDate:record.quoteDate||"",quoteIsToday:false},
+    source:{app:"github-pages-tw-stock-order",userAgent:navigator.userAgent}
+  };
+  const msg=document.getElementById("ordersMessage");
+  msg.textContent="傳送取消申請中…";
+  try {
+    await postOrderPayload(payload);
+    selectedOriginalOrderId = "";
+    await refreshTodayOrders();
+    alert("取消申請已登錄，請等待人工確認。");
+  } catch(err) {
+    msg.className="orders-error";
+    msg.textContent="取消申請未確認成功："+err.message;
+  }
+}
+
+// 重新指定送出程序：只在 GAS 確認成功後跳轉。
+document.getElementById("submitBtn").onclick = async () => {
+  if (state.side.startsWith("取消")) {
+    showPage("orders");
+    alert("請在今日下單紀錄中，選擇要取消的原始訂單。");
+    return;
+  }
+  const payload=buildPayload();
+  const error=validate(payload);
+  const msg=document.getElementById("msg");
+  msg.className="msg";
+  if (error) {msg.textContent=error;msg.classList.add("err");return;}
+  const line=payload.order.action+" "+payload.order.stockCode+" "+payload.order.stockName+
+    "\n"+payload.order.quantity+" "+payload.order.quantityUnit+
+    "\n價格："+(payload.order.priceType==="市價"?"市價":payload.order.price);
+  if (!confirm(line)) return;
+  const button=document.getElementById("submitBtn");button.disabled=true;
+  button.textContent="傳送中…";
+  try {
+    await postOrderPayload(payload);
+    msg.textContent="✓ 下單需求已成功登錄";msg.classList.add("ok");
+    showPage("orders");
+  } catch(err) {
+    msg.textContent="無法確認已登入下單紀錄："+err.message;
+    msg.classList.add("err");
+  } finally {updateSubmitButton();}
+};
+
+// 從頂部取消按鈕進入今日清單選原始訂單
+$$('[data-side]').forEach(btn=>{
+  const existing=btn.onclick;
+  btn.onclick=()=>{
+    if (existing) existing();
+    if (String(btn.dataset.side).startsWith("取消")) showPage("orders");
+  };
+});
+
+if (location.hash === "#today-orders") showPage("orders");
 
 </script>
 
